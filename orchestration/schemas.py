@@ -95,3 +95,19 @@ class CodeReview(BaseModel):
     passed: bool
     summary: str = ""
     issues: List[ReviewIssue] = Field(default_factory=list)
+
+
+class SecurityFinding(BaseModel):
+    severity: str  # "low" | "medium" | "high" | "critical"
+    file: str = ""
+    kind: str = ""
+    message: str = ""
+
+
+class SecurityReport(BaseModel):
+    """Security 输出（FR-2.4 / 宪法 5.2）。passed=false = 有 high/critical，触发一票否决。"""
+
+    passed: bool = True
+    risk_level: str = "none"  # none|low|medium|high|critical
+    findings: List[SecurityFinding] = Field(default_factory=list)
+    summary: str = ""  # LLM 对高危项的评估（仅高危时调用）

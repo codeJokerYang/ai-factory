@@ -176,6 +176,31 @@ def main(argv: Optional[List[str]] = None) -> int:
         else:
             print("✅ 构建门通过（next build 成功）")
 
+    # Security 扫描（规则先行 + 高危再 LLM，一票否决；宪法 5.2）
+    from .agents.security import SecurityAgent
+
+    SecurityAgent(llm).run(state)
+    sr = state.security_report
+    if sr is not None:
+        if sr.passed:
+            print("\n🛡️  Security: ✅ 通过（规则扫描无高危）")
+        else:
+            print(f"\n🛡️  Security: 🔴 一票否决（risk={sr.risk_level}）")
+        for f in sr.findings:
+            print(f"   [{f.severity}] {f.file}: {f.kind} — {f.message}")
+        if sr.summary:
+            print(f"   评估: {sr.summary}")
+        if not sr.passed:
+            for f in sr.findings:
+                if f.severity in ("high", "critical"):
+                    msg = f"security[{f.severity}] {f.file}: {f.kind}"
+                    if msg not in state.warnings:
+                        state.warnings.append(msg)
+            if not gate2:
+                print("\n❌ Security 一票否决，且无 Gate 2 人工 override —— 阻塞。")
+                return 1
+            print("⚠️  Security 否决 —— 需在 Gate 2 由人工 override 才能放行。")
+
     if gate2:
         from .gate2 import make_gate_2
         from .preview import dev_server, screenshot

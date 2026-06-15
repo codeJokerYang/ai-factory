@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-from .schemas import Architecture, CodeReview, Dag, GeneratedFile, ProductSpec
+from .schemas import Architecture, CodeReview, Dag, GeneratedFile, ProductSpec, SecurityReport
 
 
 class ProjectPhase(str, Enum):
@@ -49,6 +49,7 @@ class ProjectState(BaseModel):
     repair_attempts: int = 0  # 构建门失败后 Builder 自愈次数
     code_review: Optional[CodeReview] = None  # Reviewer 审查结果（Gate 2 前）
     review_rounds: int = 0  # Reviewer 否决后 Builder 修订轮数
+    security_report: Optional[SecurityReport] = None  # Security 扫描结果（一票否决）
     # Gate 2 — preview 审核
     preview_url: Optional[str] = None
     screenshot_path: Optional[str] = None
