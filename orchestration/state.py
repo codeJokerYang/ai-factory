@@ -45,6 +45,7 @@ class ProjectState(BaseModel):
     build_dir: Optional[str] = None
     build_passed: Optional[bool] = None  # 自动构建门结果（None = 未运行）
     build_log: Optional[str] = None  # 失败时的编译器报错尾部
+    repair_attempts: int = 0  # 构建门失败后 Builder 自愈次数
     # Gate 2 — preview 审核
     preview_url: Optional[str] = None
     screenshot_path: Optional[str] = None

@@ -24,6 +24,30 @@ from .scaffold import write_app
 from .state import ProjectPhase, ProjectState
 
 
+def build_and_verify(target, project, state, builder, *, verify_fn=None, write_fn=None, max_repairs=1):
+    """构建门 + 自愈：verify 失败（build 阶段）时把编译器报错回灌 Builder 修复 → 重写 → 复验。
+
+    verify_fn / write_fn 可注入便于离线测试（默认用真实的 verify_app / write_app）。
+    install 只在第一次跑（依赖装一次），修复后的复验跳过 install。
+    """
+    from .verify import verify_app
+
+    verify_fn = verify_fn or verify_app
+    write_fn = write_fn or write_app
+
+    result = verify_fn(target, install=True)
+    while (not result.passed) and result.step == "build" and state.repair_attempts < max_repairs:
+        state.repair_attempts += 1
+        builder.repair(state, result.log)
+        if state.phase == ProjectPhase.FAILED:  # repair 自身解析失败
+            break
+        write_fn(target, project, state.generated_files)
+        result = verify_fn(target, install=False)
+    state.build_passed = result.passed
+    state.build_log = result.log
+    return result
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     argv = argv if argv is not None else sys.argv[1:]
     verify = "--verify" in argv
@@ -51,13 +75,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     state = ProjectState(project_id=uuid.uuid4().hex[:8], idea=idea)
 
     # Plan + Build 一条龙；Gate 1 自动通过（build 演示），Gate 2 留给人工 preview 审核。
+    builder = Builder(llm)
     runner = SequentialRunner(
         [
             Planner(llm).run,
             Architect(llm).run,
             Decomposer(llm).run,
             make_gate_1(approver=lambda s: (True, None)),
-            Builder(llm).run,
+            builder.run,
         ]
     )
     state = runner.run(state)
@@ -86,19 +111,18 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(f"     - {f.path}")
 
     if verify:
-        from .verify import verify_app
-
-        print("\n🔧 自动构建门: npm install && npm run build ...")
-        result = verify_app(target)
-        state.build_passed = result.passed
-        state.build_log = result.log
+        print("\n🔧 自动构建门: npm install && npm run build（失败自动修复一次）...")
+        result = build_and_verify(target, project, state, builder, max_repairs=1)
         if not result.passed:
             state.phase = ProjectPhase.FAILED
-            print(f"❌ 构建门未通过（{result.step} 阶段）:\n")
+            print(f"❌ 构建门未通过（{result.step}，已尝试修复 {state.repair_attempts} 次）:\n")
             print(result.log)
             return 1
         state.phase = ProjectPhase.BUILD_VERIFIED
-        print("✅ 构建门通过（next build 成功）")
+        if state.repair_attempts:
+            print(f"✅ 构建门通过（Builder 自愈 {state.repair_attempts} 次后 next build 成功）")
+        else:
+            print("✅ 构建门通过（next build 成功）")
 
     if gate2:
         from .gate2 import make_gate_2

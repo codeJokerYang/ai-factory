@@ -9,9 +9,8 @@
 
 | # | 任务 | 分支 | 状态 | 关联 Spec |
 |---|------|------|------|-----------|
-| 1 | v1 Plan + Build pipeline（idea→spec/arch/dag→可跑 app preview） | `feat/v1-plan-pipeline` | 已推 GitHub，待 PR/合并（CI 待 workflow scope） | `wiki/specs/*` |
-| 2 | 自动构建门 B1（verify.py + build_cli --verify） | `feat/build-gate` | 已实现+集成验证，待 push/PR | - |
-| 3 | Gate 2 自动化 B2（gate2.py + preview.py + --gate2；禁 alert） | `feat/gate2-automation` | 已实现+测试，待 push/PR | - |
+| 1 | v1 + B1 + B2 | `main` | ✅ 已并入 main，GitHub Actions CI 绿 | `wiki/specs/*` |
+| 2 | Builder 自愈 B3（构建门失败→自动修复一次→复验） | `feat/builder-self-repair` | 已实现+测试，待 push/PR | - |
 
 ---
 
@@ -36,6 +35,7 @@
 | 4 | Week 3 Builder：whole-project 生成 + 脚手架 + 本地 preview（next build 通过，dev 可跑，截图确认） | 2026-06-15 | - |
 | 5 | 自动构建门 verify.py（npm build 门，逮编译/类型错误）+ build_cli --verify；31 测试，集成验证逮住 tsconfig 回退 | 2026-06-15 | - |
 | 6 | Gate 2 自动化：gate2.py（摘要+审批）+ preview.py（dev server+playwright 截图）+ --gate2；禁 alert；38 测试 | 2026-06-15 | - |
+| 7 | Builder 自愈 B3：构建门失败→编译错误回灌 Builder 修复→复验（build_and_verify + Builder.repair）；44 测试 | 2026-06-15 | - |
 
 ---
 

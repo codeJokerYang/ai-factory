@@ -49,3 +49,17 @@ def build_prompt(spec_json: str, arch_json: str) -> str:
         f"Architecture (JSON):\n{arch_json}\n\n"
         "生成特性文件 JSON。务必包含 app/page.tsx。"
     )
+
+
+def repair_prompt(error_log: str, files: list) -> str:
+    """构建门失败后回灌：当前文件 + 编译器报错 → 让 Builder 修复并返回完整 files。"""
+    import json
+
+    return (
+        "你上次生成的特性文件在 `next build` 时**编译失败**。报错（尾部）:\n"
+        f"```\n{error_log}\n```\n\n"
+        "当前的特性文件:\n"
+        f"```json\n{json.dumps({'files': files}, ensure_ascii=False)}\n```\n\n"
+        "请**修复编译错误**，返回完整的 files JSON（同样格式，包含所有文件，必须含 app/page.tsx）。"
+        "继续遵守硬约束（禁 alert/confirm/prompt、不接外部服务、只用 next/react/react-dom、Tailwind）。"
+    )
