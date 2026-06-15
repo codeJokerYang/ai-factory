@@ -1,0 +1,74 @@
+name: AI Code Guard
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  # ============================================================
+  # 测试（Python 项目）
+  # ============================================================
+  test:
+    name: Test (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Test
+        run: python -m pytest -v --tb=short
+
+  # ============================================================
+  # 敏感文件 / 硬编码密钥检测
+  # 无 main/master 基线时（如首个分支零提交）回退到全量扫描
+  # ============================================================
+  sensitive-files:
+    name: Sensitive File Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine changed files (fallback to all)
+        run: |
+          BASE=""
+          for ref in origin/main origin/master; do
+            if git rev-parse --verify "$ref" >/dev/null 2>&1; then BASE="$ref"; break; fi
+          done
+          if [ -n "$BASE" ]; then
+            echo "→ 基线: $BASE"
+            git diff --name-only "$BASE"...HEAD > changed_files.txt || git ls-files > changed_files.txt
+          else
+            echo "→ 无 main/master 基线，全量扫描"
+            git ls-files > changed_files.txt
+          fi
+          echo "文件数: $(wc -l < changed_files.txt)"
+
+      - name: Check for sensitive files
+        run: |
+          SENSITIVE=$(grep -E '(\.env$|\.env\.|secret|credential|\.pem$|\.key$)' changed_files.txt || true)
+          if [ -n "$SENSITIVE" ]; then
+            echo "❌ 检测到敏感文件:"
+            echo "$SENSITIVE"
+            exit 1
+          fi
+          echo "✅ 敏感文件检查通过"
+
+      - name: Scan for hardcoded secrets (non-blocking)
+        run: |
+          # 命中需人工确认；不阻塞 CI
+          grep -rEnI '(password|secret|api_key|token)[[:space:]]*=[[:space:]]*"[A-Za-z0-9_\-]{8,}"' \
+            --include='*.py' --include='*.ts' --include='*.tsx' --include='*.js' . || true
+          echo "✅ 硬编码密钥扫描完成"
