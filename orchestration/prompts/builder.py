@@ -28,6 +28,7 @@ Next.js 14（App Router）+ TypeScript + Tailwind 项目生成**特性代码文�
 硬约束（v1）:
 - **必须**生成 `app/page.tsx` 作为主页面（默认导出 React 组件）。
 - 需要交互/浏览器 API 的组件加 `'use client'`。
+- **禁止 `alert()` / `confirm()` / `prompt()`**（会阻塞自动化预览与截图）；用内联 UI 反馈状态（顶部 banner、toast、行内提示文字等）。
 - **不接任何外部服务**：没有 Supabase、没有数据库、没有真实网络后端。用内存 state / localStorage / mock 数据。
 - 用 Tailwind class 做样式；TypeScript 严格模式可编译（`next build` 必须通过）。
 - 不要引入脚手架 deps 之外的第三方依赖（只能用 next / react / react-dom）。

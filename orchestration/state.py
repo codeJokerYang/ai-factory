@@ -26,6 +26,8 @@ class ProjectPhase(str, Enum):
     BUILD_DONE = "build_done"
     BUILD_VERIFIED = "build_verified"  # npm build 通过（自动构建门）
     WAITING_GATE_2 = "waiting_gate_2"
+    GATE_2_APPROVED = "gate_2_approved"
+    GATE_2_REJECTED = "gate_2_rejected"
     FAILED = "failed"
 
 
@@ -43,4 +45,9 @@ class ProjectState(BaseModel):
     build_dir: Optional[str] = None
     build_passed: Optional[bool] = None  # 自动构建门结果（None = 未运行）
     build_log: Optional[str] = None  # 失败时的编译器报错尾部
+    # Gate 2 — preview 审核
+    preview_url: Optional[str] = None
+    screenshot_path: Optional[str] = None
+    gate_2_approved: bool = False
+    gate_2_feedback: Optional[str] = None
     errors: List[str] = Field(default_factory=list)

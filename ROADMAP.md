@@ -11,6 +11,7 @@
 |---|------|------|------|-----------|
 | 1 | v1 Plan + Build pipeline（idea→spec/arch/dag→可跑 app preview） | `feat/v1-plan-pipeline` | 已推 GitHub，待 PR/合并（CI 待 workflow scope） | `wiki/specs/*` |
 | 2 | 自动构建门 B1（verify.py + build_cli --verify） | `feat/build-gate` | 已实现+集成验证，待 push/PR | - |
+| 3 | Gate 2 自动化 B2（gate2.py + preview.py + --gate2；禁 alert） | `feat/gate2-automation` | 已实现+测试，待 push/PR | - |
 
 ---
 
@@ -19,7 +20,6 @@
 | # | 任务 | 优先级 | 预估 | 关联 Issue |
 |---|------|--------|------|-----------|
 | 2 | Builder 增强：PDF 解析（pdfjs）、真 Supabase 接入、生成更多文件 | 中 | - | - |
-| 3 | Gate 2 自动化：脚本化 dev+截图+diff（绕过 alert 阻塞） | 中 | - | - |
 | 4 | 升级 `SequentialRunner` → LangGraph（并行 DAG / 断点续跑 / 条件路由） | 中 | - | - |
 | 5 | 后置 agent：Reviewer / Security / Tester / Ambiguity Resolver / Integration | 低 | v2+ | - |
 
@@ -35,6 +35,7 @@
 | 3 | 稳定性验证 3/3（固定栈/DAG 合法 100%；DAG 粒度 8–20 波动） | 2026-06-15 | - |
 | 4 | Week 3 Builder：whole-project 生成 + 脚手架 + 本地 preview（next build 通过，dev 可跑，截图确认） | 2026-06-15 | - |
 | 5 | 自动构建门 verify.py（npm build 门，逮编译/类型错误）+ build_cli --verify；31 测试，集成验证逮住 tsconfig 回退 | 2026-06-15 | - |
+| 6 | Gate 2 自动化：gate2.py（摘要+审批）+ preview.py（dev server+playwright 截图）+ --gate2；禁 alert；38 测试 | 2026-06-15 | - |
 
 ---
 
@@ -42,7 +43,7 @@
 
 | # | 描述 | 严重程度 | 备注 |
 |---|------|---------|------|
-| 1 | 生成 app 用 `alert()` 会阻塞自动化截图 | 低 | 对人类用户无影响；Gate 2 自动化需绕过（见待做 #3） |
+| 1 | ~~生成 app 用 `alert()` 阻塞自动化~~ 已解决 | - | Builder prompt 禁 alert/confirm/prompt + preview 截图前注入屏蔽 |
 | 2 | v1 Builder mock 数据、无真实 PDF 解析与 Supabase | 中 | 设计内（local-first 证明闭环） |
 
 ---
@@ -67,6 +68,7 @@ python -m orchestration.cli "<idea>"
 # Build（idea → Plan → Builder → generated/<project>/ 可跑 Next.js app）
 python -m orchestration.build_cli "<idea>"
 python -m orchestration.build_cli "<idea>" --verify   # 生成后自动跑 npm build 门
+python -m orchestration.build_cli "<idea>" --gate2    # + 启 dev server / 截图 / Gate 2 审批
 cd generated/<project> && npm install && npm run dev   # http://localhost:3000
 
 # Provider 切换（默认 Claude；示例 DeepSeek）:

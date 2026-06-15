@@ -27,9 +27,10 @@ from .state import ProjectPhase, ProjectState
 def main(argv: Optional[List[str]] = None) -> int:
     argv = argv if argv is not None else sys.argv[1:]
     verify = "--verify" in argv
+    gate2 = "--gate2" in argv
     positional = [a for a in argv if not a.startswith("--")]
     if not positional or not positional[0].strip():
-        print('用法: python -m orchestration.build_cli "<一句话 idea>" [--verify]')
+        print('用法: python -m orchestration.build_cli "<一句话 idea>" [--verify] [--gate2]')
         return 2
     idea = positional[0].strip()
 
@@ -98,6 +99,39 @@ def main(argv: Optional[List[str]] = None) -> int:
             return 1
         state.phase = ProjectPhase.BUILD_VERIFIED
         print("✅ 构建门通过（next build 成功）")
+
+    if gate2:
+        from .gate2 import make_gate_2
+        from .preview import dev_server, screenshot
+
+        # --gate2 需要依赖已安装；未走 --verify 时先装一次
+        if not verify:
+            from .verify import verify_app
+
+            print("\n🔧 安装依赖中（npm install）...")
+            verify_app(target, install=True, timeout=600)
+
+        print("\n🚀 启动 dev server 进行 Gate 2 预览...")
+        with dev_server(target) as (url, ready):
+            state.preview_url = url
+            if not ready:
+                print(f"⚠️  dev server 未在超时内就绪：{url}（可手动打开确认）")
+            else:
+                shot = config.GENERATED_DIR / f"{project}.preview.png"
+                if screenshot(url, shot):
+                    state.screenshot_path = str(shot)
+                    print(f"📸 截图: {shot}")
+                else:
+                    print("（未安装 playwright，跳过自动截图；可手动打开预览）")
+            state = make_gate_2()(state)
+
+        if state.gate_2_approved:
+            print("\n✅ Gate 2 通过 — 可合并。")
+            return 0
+        print("\n↩️  Gate 2 驳回。")
+        if state.gate_2_feedback:
+            print(f"   反馈: {state.gate_2_feedback}")
+        return 1
 
     print("\n下一步（本地 preview，Gate 2）:")
     print(f"   cd {target}")
