@@ -5,8 +5,9 @@ write_app() 把脚手架与特性文件合并写盘（特性文件可覆盖同�
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from .schemas import GeneratedFile
 
@@ -113,10 +114,18 @@ _GITIGNORE = """node_modules
 out
 """
 
+_ENV_LOCAL_EXAMPLE = """# Supabase（可选）：填入后生成的 app 真连 Supabase；留空则降级为本地 mock/localStorage。
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+"""
 
-def scaffold_files(project: str) -> Dict[str, str]:
-    return {
-        "package.json": _PACKAGE_JSON.replace("__PROJECT__", project),
+
+def scaffold_files(project: str, extra_deps: Optional[Dict[str, str]] = None) -> Dict[str, str]:
+    extra_deps = extra_deps or {}
+    pkg = json.loads(_PACKAGE_JSON.replace("__PROJECT__", project))
+    pkg["dependencies"].update(extra_deps)  # 合并白名单额外依赖
+    files = {
+        "package.json": json.dumps(pkg, indent=2) + "\n",
         "next.config.mjs": _NEXT_CONFIG,
         "tsconfig.json": _TSCONFIG,
         "postcss.config.mjs": _POSTCSS,
@@ -125,11 +134,19 @@ def scaffold_files(project: str) -> Dict[str, str]:
         "app/layout.tsx": _LAYOUT.replace("__PROJECT__", project),
         ".gitignore": _GITIGNORE,
     }
+    if "@supabase/supabase-js" in extra_deps:
+        files[".env.local.example"] = _ENV_LOCAL_EXAMPLE
+    return files
 
 
-def write_app(target: Path, project: str, feature_files: List[GeneratedFile]) -> List[Path]:
+def write_app(
+    target: Path,
+    project: str,
+    feature_files: List[GeneratedFile],
+    extra_deps: Optional[Dict[str, str]] = None,
+) -> List[Path]:
     """写脚手架 + 特性文件到 target/。特性文件覆盖同名脚手架文件。"""
-    files: Dict[str, str] = scaffold_files(project)
+    files: Dict[str, str] = scaffold_files(project, extra_deps)
     for f in feature_files:
         files[f.path.replace("\\", "/")] = f.content
 

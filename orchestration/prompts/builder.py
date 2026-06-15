@@ -29,18 +29,21 @@ Next.js 14（App Router）+ TypeScript + Tailwind 项目生成**特性代码文�
 - **必须**生成 `app/page.tsx` 作为主页面（默认导出 React 组件）。
 - 需要交互/浏览器 API 的组件加 `'use client'`。
 - **禁止 `alert()` / `confirm()` / `prompt()`**（会阻塞自动化预览与截图）；用内联 UI 反馈状态（顶部 banner、toast、行内提示文字等）。
-- **不接任何外部服务**：没有 Supabase、没有数据库、没有真实网络后端。用内存 state / localStorage / mock 数据。
 - 用 Tailwind class 做样式；TypeScript 严格模式可编译（`next build` 必须通过）。
-- 不要引入脚手架 deps 之外的第三方依赖（只能用 next / react / react-dom）。
+- **依赖白名单**：默认只用 next / react / react-dom。如确需，在 `dependencies` 字段声明以下白名单包（不要声明白名单外的）：
+  - `pdfjs-dist`：**真**解析 PDF（`'use client'` 客户端提取文本，不要 mock 解析）。
+  - `@supabase/supabase-js`：接 Supabase，从 `process.env.NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` 读取；**env 缺失时降级为 localStorage/内存 mock**，保证本地无凭据也能 `npm run dev` 跑起来。
+- 不需要外部服务时，用内存 state / localStorage / mock 数据。
 - 实现 Spec 的 MVP 核心闭环；做不到真实算法就用合理的 mock（例如关键词重合度打分），并在 UI 标注「演示/mock」。
 
 只输出一个 JSON 对象（不要解释、不要 markdown 代码块）:
 {{
   "files": [
     {{"path": "app/page.tsx", "content": "<完整文件内容>"}}
-  ]
+  ],
+  "dependencies": {{ "pdfjs-dist": "^4.7.76" }}
 }}
-路径相对项目根目录。文件尽量精简，控制总量。"""
+路径相对项目根目录。dependencies 可选（不需要就省略）。文件尽量精简，控制总量。"""
 
 
 def build_prompt(spec_json: str, arch_json: str) -> str:
