@@ -127,6 +127,16 @@ def main(argv: Optional[List[str]] = None) -> int:
         else:
             print("✅ 构建门通过（next build 成功）")
 
+    # Gate 2 前自动代码审查（advisory：写入 state.code_review，高危问题进 warnings）
+    from .agents.reviewer import Reviewer
+
+    Reviewer(llm).run(state)
+    cr = state.code_review
+    if cr is not None:
+        print(f"\n🔍 Reviewer: {'✅ 通过' if cr.passed else '⚠️  有问题'} — {cr.summary}")
+        for issue in cr.issues:
+            print(f"   [{issue.severity}] {issue.file}: {issue.message}")
+
     if gate2:
         from .gate2 import make_gate_2
         from .preview import dev_server, screenshot

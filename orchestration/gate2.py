@@ -29,6 +29,11 @@ def summarize_build(state: ProjectState) -> str:
     for f in state.generated_files:
         n = len(f.content.splitlines())
         lines.append(f"  + {f.path} ({n} 行)")
+    cr = state.code_review
+    if cr is not None:
+        lines.append(f"Reviewer: {'✅ 通过' if cr.passed else '❌ 有阻塞问题'} — {cr.summary}")
+        for issue in cr.issues:
+            lines.append(f"  [{issue.severity}] {issue.file}: {issue.message}")
     lines.append("=" * 60)
     return "\n".join(lines)
 

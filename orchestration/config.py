@@ -17,6 +17,7 @@ PLANNER_MODEL = _MODEL_OVERRIDE or os.environ.get("FACTORY_PLANNER_MODEL", "clau
 ARCHITECT_MODEL = _MODEL_OVERRIDE or os.environ.get("FACTORY_ARCHITECT_MODEL", "claude-opus-4-8")
 DECOMPOSER_MODEL = _MODEL_OVERRIDE or os.environ.get("FACTORY_DECOMPOSER_MODEL", "claude-sonnet-4-6")
 BUILDER_MODEL = _MODEL_OVERRIDE or os.environ.get("FACTORY_BUILDER_MODEL", "claude-sonnet-4-6")
+REVIEWER_MODEL = _MODEL_OVERRIDE or os.environ.get("FACTORY_REVIEWER_MODEL", "claude-sonnet-4-6")
 
 # --- Paths (ARCHITECTURE.md §7.1 / §8) -----------------------------------
 PROJECT_ROOT = Path(__file__).resolve().parent.parent

@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-from .schemas import Architecture, Dag, GeneratedFile, ProductSpec
+from .schemas import Architecture, CodeReview, Dag, GeneratedFile, ProductSpec
 
 
 class ProjectPhase(str, Enum):
@@ -47,6 +47,7 @@ class ProjectState(BaseModel):
     build_passed: Optional[bool] = None  # 自动构建门结果（None = 未运行）
     build_log: Optional[str] = None  # 失败时的编译器报错尾部
     repair_attempts: int = 0  # 构建门失败后 Builder 自愈次数
+    code_review: Optional[CodeReview] = None  # Reviewer 审查结果（Gate 2 前）
     # Gate 2 — preview 审核
     preview_url: Optional[str] = None
     screenshot_path: Optional[str] = None

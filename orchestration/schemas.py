@@ -81,3 +81,17 @@ class GeneratedFile(BaseModel):
 
     path: str
     content: str
+
+
+class ReviewIssue(BaseModel):
+    severity: str  # "low" | "medium" | "high"
+    file: str = ""
+    message: str
+
+
+class CodeReview(BaseModel):
+    """Reviewer 输出（FR-2.5）。passed=false 表示存在 high 阻塞问题。"""
+
+    passed: bool
+    summary: str = ""
+    issues: List[ReviewIssue] = Field(default_factory=list)
