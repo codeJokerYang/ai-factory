@@ -16,7 +16,7 @@ from .agents.decomposer import Decomposer
 from .agents.planner import Planner
 from .gates import make_gate_1
 from .io_writers import write_outputs
-from .runner import SequentialRunner
+from .runner import make_runner
 from .state import ProjectPhase, ProjectState
 
 
@@ -42,7 +42,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     llm = AnthropicLLM()
     state = ProjectState(project_id=uuid.uuid4().hex[:8], idea=idea)
-    runner = SequentialRunner(
+    runner = make_runner(
         [
             Planner(llm).run,
             Architect(llm).run,
