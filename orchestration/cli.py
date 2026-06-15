@@ -58,6 +58,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             print("  -", err)
         return 1
 
+    for w in state.warnings:
+        print(f"⚠️  {w}")
+
     draft = state.phase != ProjectPhase.PLAN_APPROVED
     paths = write_outputs(state, draft=draft)
     print("\n产物:")

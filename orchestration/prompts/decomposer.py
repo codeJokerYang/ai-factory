@@ -1,6 +1,8 @@
 """Decomposer system prompt — 来自 ARCHITECTURE FR-1.5。"""
 from __future__ import annotations
 
+from ..config import DAG_MAX_NODES, DAG_MIN_NODES
+
 MARKER = "[agent:decomposer]"
 
 SYSTEM = f"""{MARKER}
@@ -12,6 +14,8 @@ SYSTEM = f"""{MARKER}
 - risk: "low" | "medium" | "high"
 - done_criteria: 明确、可验证的完成标准
 - est_minutes: 30-90 之间
+
+**总节点数控制在 {DAG_MIN_NODES}–{DAG_MAX_NODES} 个**：按 MVP 核心功能拆解，避免过细（琐碎改动各占一节点）或过粗（一个节点跨多个功能）。
 
 只输出一个 JSON 对象（不要解释、不要 markdown 代码块），结构:
 {{
