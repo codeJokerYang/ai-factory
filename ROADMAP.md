@@ -9,7 +9,8 @@
 
 | # | 任务 | 分支 | 状态 | 关联 Spec |
 |---|------|------|------|-----------|
-| 1 | v1 Plan + Build pipeline（idea→spec/arch/dag→可跑 app preview） | `feat/v1-plan-pipeline` | 已实现并验证，待审/合并 | `wiki/specs/*` |
+| 1 | v1 Plan + Build pipeline（idea→spec/arch/dag→可跑 app preview） | `feat/v1-plan-pipeline` | 已推 GitHub，待 PR/合并（CI 待 workflow scope） | `wiki/specs/*` |
+| 2 | 自动构建门 B1（verify.py + build_cli --verify） | `feat/build-gate` | 已实现+集成验证，待 push/PR | - |
 
 ---
 
@@ -33,6 +34,7 @@
 | 2 | Provider 兼容（ANTHROPIC_BASE_URL/AUTH_TOKEN + FACTORY_MODEL）；DeepSeek 实跑验证 | 2026-06-15 | - |
 | 3 | 稳定性验证 3/3（固定栈/DAG 合法 100%；DAG 粒度 8–20 波动） | 2026-06-15 | - |
 | 4 | Week 3 Builder：whole-project 生成 + 脚手架 + 本地 preview（next build 通过，dev 可跑，截图确认） | 2026-06-15 | - |
+| 5 | 自动构建门 verify.py（npm build 门，逮编译/类型错误）+ build_cli --verify；31 测试，集成验证逮住 tsconfig 回退 | 2026-06-15 | - |
 
 ---
 
@@ -64,6 +66,7 @@ python -m orchestration.cli "<idea>"
 
 # Build（idea → Plan → Builder → generated/<project>/ 可跑 Next.js app）
 python -m orchestration.build_cli "<idea>"
+python -m orchestration.build_cli "<idea>" --verify   # 生成后自动跑 npm build 门
 cd generated/<project> && npm install && npm run dev   # http://localhost:3000
 
 # Provider 切换（默认 Claude；示例 DeepSeek）:

@@ -1,9 +1,10 @@
 """Build CLI（Week 3 v1）：一句话 idea → Plan → Builder → 可跑的 Next.js app。
 
-    python -m orchestration.build_cli "<idea>"
+    python -m orchestration.build_cli "<idea>" [--verify]
 
 Plan 阶段 Gate 1 在 build 流程里自动通过（Gate 1 已在 Plan pipeline 单独验证）；
 真正的人工关卡是 Gate 2（preview 审核），在 app 跑起来后人工进行。
+--verify: 生成后自动跑 npm install && npm run build（自动构建门），编译不过即失败。
 """
 from __future__ import annotations
 
@@ -25,10 +26,12 @@ from .state import ProjectPhase, ProjectState
 
 def main(argv: Optional[List[str]] = None) -> int:
     argv = argv if argv is not None else sys.argv[1:]
-    if not argv or not argv[0].strip():
-        print('用法: python -m orchestration.build_cli "<一句话 idea>"')
+    verify = "--verify" in argv
+    positional = [a for a in argv if not a.startswith("--")]
+    if not positional or not positional[0].strip():
+        print('用法: python -m orchestration.build_cli "<一句话 idea>" [--verify]')
         return 2
-    idea = argv[0].strip()
+    idea = positional[0].strip()
 
     try:
         from dotenv import load_dotenv
@@ -80,9 +83,26 @@ def main(argv: Optional[List[str]] = None) -> int:
     print(f"   特性文件（Builder）: {len(state.generated_files)}  | 总文件: {len(written)}")
     for f in state.generated_files:
         print(f"     - {f.path}")
+
+    if verify:
+        from .verify import verify_app
+
+        print("\n🔧 自动构建门: npm install && npm run build ...")
+        result = verify_app(target)
+        state.build_passed = result.passed
+        state.build_log = result.log
+        if not result.passed:
+            state.phase = ProjectPhase.FAILED
+            print(f"❌ 构建门未通过（{result.step} 阶段）:\n")
+            print(result.log)
+            return 1
+        state.phase = ProjectPhase.BUILD_VERIFIED
+        print("✅ 构建门通过（next build 成功）")
+
     print("\n下一步（本地 preview，Gate 2）:")
     print(f"   cd {target}")
-    print("   npm install")
+    if not verify:
+        print("   npm install")
     print("   npm run dev   # 然后浏览器打开 http://localhost:3000")
     return 0
 
