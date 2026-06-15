@@ -48,6 +48,36 @@ def build_and_verify(target, project, state, builder, *, verify_fn=None, write_f
     return result
 
 
+def _format_review(review) -> str:
+    lines = [review.summary] if review.summary else []
+    for issue in review.issues:
+        lines.append(f"- [{issue.severity}] {issue.file}: {issue.message}")
+    return "\n".join(lines)
+
+
+def review_and_revise(state, target, project, builder, reviewer, *, write_fn=None, max_rounds=1):
+    """Reviewer 否决 → Builder 按审查意见修订 → 复审，最多 max_rounds 轮；仍不过则升级 Gate 2。
+
+    write_fn 可注入便于离线测试（默认 write_app）。
+    """
+    write_fn = write_fn or write_app
+
+    reviewer.run(state)
+    while (
+        state.code_review is not None
+        and not state.code_review.passed
+        and state.review_rounds < max_rounds
+        and state.phase != ProjectPhase.FAILED
+    ):
+        state.review_rounds += 1
+        builder.revise(state, _format_review(state.code_review))
+        if state.phase == ProjectPhase.FAILED:  # revise 自身解析失败
+            break
+        write_fn(target, project, state.generated_files, state.extra_dependencies)
+        reviewer.run(state)
+    return state.code_review
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     argv = argv if argv is not None else sys.argv[1:]
     verify = "--verify" in argv
@@ -113,6 +143,25 @@ def main(argv: Optional[List[str]] = None) -> int:
     for f in state.generated_files:
         print(f"     - {f.path}")
 
+    # Gate 2 前：Reviewer 审查 + Builder 自愈闭环（否决 → 按意见修 → 复审，≤1 轮后升级 Gate 2）
+    from .agents.reviewer import Reviewer
+
+    reviewer = Reviewer(llm)
+    review_and_revise(state, target, project, builder, reviewer, max_rounds=1)
+    cr = state.code_review
+    if cr is not None:
+        rounds = f"（自愈 {state.review_rounds} 轮后）" if state.review_rounds else ""
+        tag = "✅ 通过" if cr.passed else "⚠️  仍有阻塞问题（升级 Gate 2 人工决策）"
+        print(f"\n🔍 Reviewer: {tag}{rounds} — {cr.summary}")
+        for issue in cr.issues:
+            print(f"   [{issue.severity}] {issue.file}: {issue.message}")
+        if not cr.passed:
+            for issue in cr.issues:
+                if issue.severity == "high":
+                    msg = f"reviewer[high] {issue.file}: {issue.message}"
+                    if msg not in state.warnings:
+                        state.warnings.append(msg)
+
     if verify:
         print("\n🔧 自动构建门: npm install && npm run build（失败自动修复一次）...")
         result = build_and_verify(target, project, state, builder, max_repairs=1)
@@ -126,16 +175,6 @@ def main(argv: Optional[List[str]] = None) -> int:
             print(f"✅ 构建门通过（Builder 自愈 {state.repair_attempts} 次后 next build 成功）")
         else:
             print("✅ 构建门通过（next build 成功）")
-
-    # Gate 2 前自动代码审查（advisory：写入 state.code_review，高危问题进 warnings）
-    from .agents.reviewer import Reviewer
-
-    Reviewer(llm).run(state)
-    cr = state.code_review
-    if cr is not None:
-        print(f"\n🔍 Reviewer: {'✅ 通过' if cr.passed else '⚠️  有问题'} — {cr.summary}")
-        for issue in cr.issues:
-            print(f"   [{issue.severity}] {issue.file}: {issue.message}")
 
     if gate2:
         from .gate2 import make_gate_2

@@ -31,12 +31,7 @@ class Reviewer(Agent):
             model=self.model, system=SYSTEM, prompt=build_prompt(spec_json, arch_json, files)
         )
         try:
-            review = CodeReview(**extract_json(raw))
-            state.code_review = review
-            if not review.passed:
-                for issue in review.issues:
-                    if issue.severity == "high":
-                        state.warnings.append(f"reviewer[high] {issue.file}: {issue.message}")
+            state.code_review = CodeReview(**extract_json(raw))
         except Exception as exc:  # noqa: BLE001 - advisory：审查解析失败不阻塞
             state.warnings.append(f"reviewer: 审查解析失败，已跳过（{exc}）")
         return state

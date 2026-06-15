@@ -9,8 +9,8 @@
 
 | # | 任务 | 分支 | 状态 | 关联 Spec |
 |---|------|------|------|-----------|
-| 1 | v1 + B1 + B2 + B3 + 粒度约束 + 保真度 | `main` | ✅ 已并入 main，CI 绿 | `wiki/specs/*` |
-| 2 | Reviewer agent（Gate 2 前自动代码审查，advisory） | `feat/reviewer` | 已实现+测试，待 push/PR | - |
+| 1 | v1 + B1 + B2 + B3 + 粒度约束 + 保真度 + Reviewer | `main` | ✅ 已并入 main，CI 绿 | `wiki/specs/*` |
+| 2 | Reviewer 自愈闭环（否决→修订→复审，veto+fix loop） | `feat/reviewer-loop` | 已实现+测试，待 push/PR | - |
 
 ---
 
@@ -38,6 +38,7 @@
 | 8 | Decomposer 粒度约束：prompt 目标 12–18 + check_granularity 软校验 + state.warnings（非阻塞）；49 测试 | 2026-06-15 | - |
 | 9 | 保真度：依赖白名单（pdfjs-dist / @supabase/supabase-js，固定版本）+ scaffold 合并 package.json + Supabase env 降级 mock；54 测试 | 2026-06-15 | - |
 | 10 | Reviewer agent：Gate 2 前自动代码审查（CodeReview/ReviewIssue + advisory，high 入 warnings + Gate 2 摘要）；60 测试 | 2026-06-15 | - |
+| 11 | Reviewer 自愈闭环：否决→Builder.revise→复审（review_and_revise + revise_prompt），≤1 轮后升级 Gate 2；review 先于构建门；66 测试 | 2026-06-15 | - |
 
 ---
 
