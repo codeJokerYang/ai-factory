@@ -1,0 +1,47 @@
+# 依赖
+node_modules/
+.pnp
+.pnp.js
+
+# 构建
+dist/
+build/
+.next/
+out/
+
+# 环境变量
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
+npm-debug.log*
+
+# Claude Code（忽略 .claude/ 下内容，但保留共享的 MCP 配置）
+.claude/*
+!.claude/mcp.json
+
+# Builder 生成物（可重新生成，不入库）
+generated/
+
+# Pipeline 输出（每次运行重新生成）
+/tasks.json
+/tasks.draft.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
