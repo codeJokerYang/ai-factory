@@ -33,7 +33,7 @@ def test_reviewer_pass():
     assert st.phase != ProjectPhase.FAILED
 
 
-def test_reviewer_flags_high_issue_as_warning():
+def test_reviewer_records_high_issue():
     review = (
         '{"passed":false,"summary":"issues","issues":'
         '[{"severity":"high","file":"app/page.tsx","message":"hardcoded api key"}]}'
@@ -41,8 +41,8 @@ def test_reviewer_flags_high_issue_as_warning():
     st = _state_with_files()
     Reviewer(MockLLM(responses={"[agent:reviewer]": review})).run(st)
     assert st.code_review.passed is False
-    assert any("reviewer[high]" in w for w in st.warnings)
-    assert st.phase != ProjectPhase.FAILED  # advisory：不阻塞
+    assert any(i.severity == "high" for i in st.code_review.issues)
+    assert st.phase != ProjectPhase.FAILED  # advisory：不阻塞（升级由 Gate 2 处理）
 
 
 def test_reviewer_no_files_skips_without_llm():

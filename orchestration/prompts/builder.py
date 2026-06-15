@@ -64,5 +64,19 @@ def repair_prompt(error_log: str, files: list) -> str:
         "当前的特性文件:\n"
         f"```json\n{json.dumps({'files': files}, ensure_ascii=False)}\n```\n\n"
         "请**修复编译错误**，返回完整的 files JSON（同样格式，包含所有文件，必须含 app/page.tsx）。"
-        "继续遵守硬约束（禁 alert/confirm/prompt、不接外部服务、只用 next/react/react-dom、Tailwind）。"
+        "继续遵守硬约束（禁 alert/confirm/prompt、白名单依赖、Tailwind、可编译）。"
+    )
+
+
+def revise_prompt(review_feedback: str, files: list) -> str:
+    """Reviewer 否决后回灌：审查意见 + 当前文件 → 让 Builder 按意见修订。"""
+    import json
+
+    return (
+        "代码审查（Reviewer）指出以下问题，请逐条修复:\n"
+        f"```\n{review_feedback}\n```\n\n"
+        "当前的特性文件:\n"
+        f"```json\n{json.dumps({'files': files}, ensure_ascii=False)}\n```\n\n"
+        "返回完整的 files JSON（同样格式，含 app/page.tsx），只改必要处。"
+        "继续遵守硬约束（禁 alert/confirm/prompt、白名单依赖、Tailwind、可编译）。"
     )

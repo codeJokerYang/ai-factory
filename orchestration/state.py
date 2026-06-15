@@ -48,6 +48,7 @@ class ProjectState(BaseModel):
     build_log: Optional[str] = None  # 失败时的编译器报错尾部
     repair_attempts: int = 0  # 构建门失败后 Builder 自愈次数
     code_review: Optional[CodeReview] = None  # Reviewer 审查结果（Gate 2 前）
+    review_rounds: int = 0  # Reviewer 否决后 Builder 修订轮数
     # Gate 2 — preview 审核
     preview_url: Optional[str] = None
     screenshot_path: Optional[str] = None

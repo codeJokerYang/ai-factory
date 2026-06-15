@@ -5,7 +5,7 @@ whole-project 一次性生成；mock 数据，无外部服务。脚手架由 sca
 from __future__ import annotations
 
 from ..config import ALLOWED_EXTRA_DEPS, BUILDER_MAX_TOKENS, BUILDER_MODEL
-from ..prompts.builder import SYSTEM, build_prompt, repair_prompt
+from ..prompts.builder import SYSTEM, build_prompt, repair_prompt, revise_prompt
 from ..schemas import GeneratedFile
 from ..state import ProjectPhase, ProjectState
 from ..util import extract_json
@@ -80,5 +80,25 @@ class Builder(Agent):
                 state.warnings.append(f"builder.repair: 依赖 {name} 不在白名单，已忽略")
         except Exception as exc:  # noqa: BLE001
             state.errors.append(f"builder.repair: {exc}")
+            state.phase = ProjectPhase.FAILED
+        return state
+
+    def revise(self, state: ProjectState, review_feedback: str) -> ProjectState:
+        """按 Reviewer 审查意见修订代码（FR-2.5 veto → fix）。"""
+        current = [{"path": f.path, "content": f.content} for f in state.generated_files]
+        raw = self.llm.complete(
+            model=self.model,
+            system=SYSTEM,
+            prompt=revise_prompt(review_feedback, current),
+            max_tokens=BUILDER_MAX_TOKENS,
+        )
+        try:
+            files, deps, dropped = _parse_output(raw)
+            state.generated_files = files
+            state.extra_dependencies = {**state.extra_dependencies, **deps}
+            for name in dropped:
+                state.warnings.append(f"builder.revise: 依赖 {name} 不在白名单，已忽略")
+        except Exception as exc:  # noqa: BLE001
+            state.errors.append(f"builder.revise: {exc}")
             state.phase = ProjectPhase.FAILED
         return state
