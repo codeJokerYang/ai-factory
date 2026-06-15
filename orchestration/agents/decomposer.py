@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from ..config import DECOMPOSER_MODEL
-from ..dag_validator import DagValidationError, validate_dag
+from ..dag_validator import DagValidationError, check_granularity, validate_dag
 from ..prompts.decomposer import SYSTEM, build_prompt
 from ..schemas import Dag
 from ..state import ProjectPhase, ProjectState
@@ -32,6 +32,9 @@ class Decomposer(Agent):
             dag = Dag(**extract_json(raw))
             validate_dag(dag)
             state.dag = dag
+            warning = check_granularity(dag)
+            if warning:
+                state.warnings.append(f"decomposer: {warning}")
         except DagValidationError as exc:
             state.errors.append(f"decomposer: DAG 不合法: {exc}")
             state.phase = ProjectPhase.FAILED

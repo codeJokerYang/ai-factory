@@ -38,6 +38,11 @@ FIXED_STACK = {
 MAX_TOKENS = 8000
 BUILDER_MAX_TOKENS = 8000  # 整项目生成需要更大输出预算（DeepSeek 上限 ~8192）
 
+# --- DAG 粒度约束 (Decomposer) -------------------------------------------
+# 稳定性测显示同一 idea 节点数 8–20 波动；收敛到目标区间，过界给非阻塞 warning。
+DAG_MIN_NODES = 12
+DAG_MAX_NODES = 18
+
 # --- Builder / generated app (Week 3) ------------------------------------
 GENERATED_DIR = PROJECT_ROOT / "generated"
 API_KEY_ENV = "ANTHROPIC_API_KEY"

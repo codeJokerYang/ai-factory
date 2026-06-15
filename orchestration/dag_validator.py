@@ -1,6 +1,9 @@
 """DAG 校验：依赖完整性 + 循环依赖检测（ARCHITECTURE FR-1.6 / §6.1.2 Reviewer 检查项）。"""
 from __future__ import annotations
 
+from typing import Optional
+
+from . import config
 from .schemas import Dag
 
 
@@ -42,3 +45,15 @@ def _check_cycles(dag: Dag) -> None:
     for nid in graph:
         if color[nid] == WHITE:
             dfs(nid)
+
+
+def check_granularity(dag: Dag, lo: Optional[int] = None, hi: Optional[int] = None) -> Optional[str]:
+    """粒度软校验：节点数越界返回非阻塞 warning 文案，区间内返回 None。"""
+    lo = config.DAG_MIN_NODES if lo is None else lo
+    hi = config.DAG_MAX_NODES if hi is None else hi
+    n = len(dag.nodes)
+    if n < lo:
+        return f"DAG 仅 {n} 个节点，低于建议下限 {lo}（可能拆得过粗）"
+    if n > hi:
+        return f"DAG 有 {n} 个节点，高于建议上限 {hi}（可能拆得过细）"
+    return None

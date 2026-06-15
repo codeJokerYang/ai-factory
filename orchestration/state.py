@@ -52,3 +52,4 @@ class ProjectState(BaseModel):
     gate_2_approved: bool = False
     gate_2_feedback: Optional[str] = None
     errors: List[str] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)  # 非阻塞提醒（如 DAG 粒度越界）

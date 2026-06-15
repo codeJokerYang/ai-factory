@@ -11,6 +11,7 @@
 |---|------|------|------|-----------|
 | 1 | v1 + B1 + B2 | `main` | ✅ 已并入 main，GitHub Actions CI 绿 | `wiki/specs/*` |
 | 2 | Builder 自愈 B3（构建门失败→自动修复一次→复验） | `feat/builder-self-repair` | 已实现+测试，待 push/PR | - |
+| 3 | Decomposer 粒度约束（DAG 收敛 12–18，越界非阻塞 warning） | `feat/decomposer-granularity` | 已实现+测试，待 push/PR | - |
 
 ---
 
@@ -36,6 +37,7 @@
 | 5 | 自动构建门 verify.py（npm build 门，逮编译/类型错误）+ build_cli --verify；31 测试，集成验证逮住 tsconfig 回退 | 2026-06-15 | - |
 | 6 | Gate 2 自动化：gate2.py（摘要+审批）+ preview.py（dev server+playwright 截图）+ --gate2；禁 alert；38 测试 | 2026-06-15 | - |
 | 7 | Builder 自愈 B3：构建门失败→编译错误回灌 Builder 修复→复验（build_and_verify + Builder.repair）；44 测试 | 2026-06-15 | - |
+| 8 | Decomposer 粒度约束：prompt 目标 12–18 + check_granularity 软校验 + state.warnings（非阻塞）；49 测试 | 2026-06-15 | - |
 
 ---
 

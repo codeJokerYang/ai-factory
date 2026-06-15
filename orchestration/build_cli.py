@@ -93,6 +93,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             print("  -", err)
         return 1
 
+    for w in state.warnings:
+        print(f"⚠️  {w}")
+
     # 持久化 Plan 产物（spec / architecture / tasks.json）—— 与 orchestration.cli 一致
     plan_paths = write_outputs(state)
 
