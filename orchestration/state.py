@@ -1,0 +1,43 @@
+"""ProjectState — 在每个步骤之间显式传递的状态对象。
+
+镜像 ARCHITECTURE.md §6.1.1，裁剪到 v1 Plan 阶段字段。Agent 无状态：各自从这个对象读取所需、
+返回更新后的对象，因此只有 orchestration 引擎知道执行顺序。
+"""
+from __future__ import annotations
+
+from enum import Enum
+from typing import List, Optional
+
+from pydantic import BaseModel, Field
+
+from .schemas import Architecture, Dag, GeneratedFile, ProductSpec
+
+
+class ProjectPhase(str, Enum):
+    INIT = "init"
+    PLANNING = "planning"
+    ARCHITECTING = "architecting"
+    DECOMPOSING = "decomposing"
+    WAITING_GATE_1 = "waiting_gate_1"
+    PLAN_APPROVED = "plan_approved"
+    PLAN_REJECTED = "plan_rejected"
+    # Week 3 — BUILD 阶段
+    BUILDING = "building"
+    BUILD_DONE = "build_done"
+    WAITING_GATE_2 = "waiting_gate_2"
+    FAILED = "failed"
+
+
+class ProjectState(BaseModel):
+    project_id: str
+    idea: str
+    phase: ProjectPhase = ProjectPhase.INIT
+    product_spec: Optional[ProductSpec] = None
+    architecture: Optional[Architecture] = None
+    dag: Optional[Dag] = None
+    gate_1_approved: bool = False
+    gate_1_feedback: Optional[str] = None
+    # Week 3 — BUILD 阶段
+    generated_files: List[GeneratedFile] = Field(default_factory=list)
+    build_dir: Optional[str] = None
+    errors: List[str] = Field(default_factory=list)
