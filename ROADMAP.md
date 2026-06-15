@@ -9,9 +9,8 @@
 
 | # | 任务 | 分支 | 状态 | 关联 Spec |
 |---|------|------|------|-----------|
-| 1 | v1 + B1 + B2 | `main` | ✅ 已并入 main，GitHub Actions CI 绿 | `wiki/specs/*` |
-| 2 | Builder 自愈 B3（构建门失败→自动修复一次→复验） | `feat/builder-self-repair` | 已实现+测试，待 push/PR | - |
-| 3 | Decomposer 粒度约束（DAG 收敛 12–18，越界非阻塞 warning） | `feat/decomposer-granularity` | 已实现+测试，待 push/PR | - |
+| 1 | v1 + B1 + B2 + B3 + Decomposer 粒度约束 | `main` | ✅ 已并入 main，CI 绿 | `wiki/specs/*` |
+| 2 | 保真度（白名单依赖：PDF/pdfjs + Supabase/env，降级 mock） | `feat/fidelity` | 已实现+测试，待 push/PR | - |
 
 ---
 
@@ -19,7 +18,6 @@
 
 | # | 任务 | 优先级 | 预估 | 关联 Issue |
 |---|------|--------|------|-----------|
-| 2 | Builder 增强：PDF 解析（pdfjs）、真 Supabase 接入、生成更多文件 | 中 | - | - |
 | 4 | 升级 `SequentialRunner` → LangGraph（并行 DAG / 断点续跑 / 条件路由） | 中 | - | - |
 | 5 | 后置 agent：Reviewer / Security / Tester / Ambiguity Resolver / Integration | 低 | v2+ | - |
 
@@ -38,6 +36,7 @@
 | 6 | Gate 2 自动化：gate2.py（摘要+审批）+ preview.py（dev server+playwright 截图）+ --gate2；禁 alert；38 测试 | 2026-06-15 | - |
 | 7 | Builder 自愈 B3：构建门失败→编译错误回灌 Builder 修复→复验（build_and_verify + Builder.repair）；44 测试 | 2026-06-15 | - |
 | 8 | Decomposer 粒度约束：prompt 目标 12–18 + check_granularity 软校验 + state.warnings（非阻塞）；49 测试 | 2026-06-15 | - |
+| 9 | 保真度：依赖白名单（pdfjs-dist / @supabase/supabase-js，固定版本）+ scaffold 合并 package.json + Supabase env 降级 mock；54 测试 | 2026-06-15 | - |
 
 ---
 

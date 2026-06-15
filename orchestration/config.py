@@ -43,6 +43,13 @@ BUILDER_MAX_TOKENS = 8000  # 整项目生成需要更大输出预算（DeepSeek 
 DAG_MIN_NODES = 12
 DAG_MAX_NODES = 18
 
+# --- 保真度：Builder 可声明的额外依赖白名单 ------------------------------
+# 防止任意依赖注入：只接受白名单内的包，且固定版本（忽略 LLM 给的版本）。
+ALLOWED_EXTRA_DEPS = {
+    "pdfjs-dist": "4.7.76",  # 客户端 PDF 文本解析（无需后端/凭据）
+    "@supabase/supabase-js": "2.45.0",  # Supabase 客户端（env 配置则真连，否则降级 mock）
+}
+
 # --- Builder / generated app (Week 3) ------------------------------------
 GENERATED_DIR = PROJECT_ROOT / "generated"
 API_KEY_ENV = "ANTHROPIC_API_KEY"

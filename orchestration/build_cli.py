@@ -41,7 +41,7 @@ def build_and_verify(target, project, state, builder, *, verify_fn=None, write_f
         builder.repair(state, result.log)
         if state.phase == ProjectPhase.FAILED:  # repair 自身解析失败
             break
-        write_fn(target, project, state.generated_files)
+        write_fn(target, project, state.generated_files, state.extra_dependencies)
         result = verify_fn(target, install=False)
     state.build_passed = result.passed
     state.build_log = result.log
@@ -101,7 +101,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     project = state.product_spec.project_name
     target = config.GENERATED_DIR / project
-    written = write_app(target, project, state.generated_files)
+    written = write_app(target, project, state.generated_files, state.extra_dependencies)
     state.build_dir = str(target)
 
     print("\nPlan 产物:")

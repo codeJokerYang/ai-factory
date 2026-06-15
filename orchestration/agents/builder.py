@@ -4,7 +4,7 @@ whole-project 一次性生成；mock 数据，无外部服务。脚手架由 sca
 """
 from __future__ import annotations
 
-from ..config import BUILDER_MAX_TOKENS, BUILDER_MODEL
+from ..config import ALLOWED_EXTRA_DEPS, BUILDER_MAX_TOKENS, BUILDER_MODEL
 from ..prompts.builder import SYSTEM, build_prompt, repair_prompt
 from ..schemas import GeneratedFile
 from ..state import ProjectPhase, ProjectState
@@ -12,13 +12,22 @@ from ..util import extract_json
 from .base import Agent
 
 
-def _parse_files(raw: str) -> list:
-    """从 LLM 响应解析 files；缺 app/page.tsx 视为错误。"""
+def _parse_output(raw: str):
+    """解析 LLM 响应 → (files, deps, dropped)。
+
+    缺 app/page.tsx 视为错误；dependencies 按白名单过滤并固定版本，白名单外的记入 dropped。
+    """
     data = extract_json(raw)
     files = [GeneratedFile(**f) for f in data.get("files", [])]
     if not any(f.path.replace("\\", "/") == "app/page.tsx" for f in files):
         raise ValueError("未生成 app/page.tsx")
-    return files
+    deps, dropped = {}, []
+    for name in data.get("dependencies") or {}:
+        if name in ALLOWED_EXTRA_DEPS:
+            deps[name] = ALLOWED_EXTRA_DEPS[name]  # 固定版本，忽略 LLM 给的
+        else:
+            dropped.append(name)
+    return files, deps, dropped
 
 
 class Builder(Agent):
@@ -43,7 +52,11 @@ class Builder(Agent):
             max_tokens=BUILDER_MAX_TOKENS,
         )
         try:
-            state.generated_files = _parse_files(raw)
+            files, deps, dropped = _parse_output(raw)
+            state.generated_files = files
+            state.extra_dependencies = deps
+            for name in dropped:
+                state.warnings.append(f"builder: 依赖 {name} 不在白名单，已忽略")
             state.phase = ProjectPhase.BUILD_DONE
         except Exception as exc:  # noqa: BLE001
             state.errors.append(f"builder: {exc}")
@@ -60,7 +73,11 @@ class Builder(Agent):
             max_tokens=BUILDER_MAX_TOKENS,
         )
         try:
-            state.generated_files = _parse_files(raw)
+            files, deps, dropped = _parse_output(raw)
+            state.generated_files = files
+            state.extra_dependencies = {**state.extra_dependencies, **deps}  # 保留原有依赖
+            for name in dropped:
+                state.warnings.append(f"builder.repair: 依赖 {name} 不在白名单，已忽略")
         except Exception as exc:  # noqa: BLE001
             state.errors.append(f"builder.repair: {exc}")
             state.phase = ProjectPhase.FAILED

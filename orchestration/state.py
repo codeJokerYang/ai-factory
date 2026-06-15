@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -42,6 +42,7 @@ class ProjectState(BaseModel):
     gate_1_feedback: Optional[str] = None
     # Week 3 — BUILD 阶段
     generated_files: List[GeneratedFile] = Field(default_factory=list)
+    extra_dependencies: Dict[str, str] = Field(default_factory=dict)  # Builder 声明的白名单依赖
     build_dir: Optional[str] = None
     build_passed: Optional[bool] = None  # 自动构建门结果（None = 未运行）
     build_log: Optional[str] = None  # 失败时的编译器报错尾部
