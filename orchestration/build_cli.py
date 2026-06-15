@@ -19,7 +19,7 @@ from .agents.decomposer import Decomposer
 from .agents.planner import Planner
 from .gates import make_gate_1
 from .io_writers import write_outputs
-from .runner import SequentialRunner
+from .runner import make_runner
 from .scaffold import write_app
 from .state import ProjectPhase, ProjectState
 
@@ -106,7 +106,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # Plan + Build 一条龙；Gate 1 自动通过（build 演示），Gate 2 留给人工 preview 审核。
     builder = Builder(llm)
-    runner = SequentialRunner(
+    runner = make_runner(
         [
             Planner(llm).run,
             Architect(llm).run,

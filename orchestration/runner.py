@@ -9,7 +9,8 @@ LangGraphRunner 时，agent 与 schema 完全不动。
 """
 from __future__ import annotations
 
-from typing import Callable, List
+import os
+from typing import Callable, List, Optional
 
 from .state import ProjectPhase, ProjectState
 
@@ -29,3 +30,16 @@ class SequentialRunner:
             if state.phase in _TERMINAL:
                 break
         return state
+
+
+def make_runner(steps: List[Step], runner: Optional[str] = None):
+    """选择编排引擎（默认 sequential）；FACTORY_RUNNER=langgraph 切到状态机。
+
+    这是 v1 设计的**唯一切换点** —— agent / schema 完全不变。
+    """
+    name = (runner or os.environ.get("FACTORY_RUNNER", "sequential")).lower()
+    if name == "langgraph":
+        from .lang_runner import LangGraphRunner
+
+        return LangGraphRunner(steps)
+    return SequentialRunner(steps)
