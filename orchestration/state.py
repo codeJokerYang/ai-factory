@@ -24,6 +24,7 @@ class ProjectPhase(str, Enum):
     # Week 3 — BUILD 阶段
     BUILDING = "building"
     BUILD_DONE = "build_done"
+    BUILD_VERIFIED = "build_verified"  # npm build 通过（自动构建门）
     WAITING_GATE_2 = "waiting_gate_2"
     FAILED = "failed"
 
@@ -40,4 +41,6 @@ class ProjectState(BaseModel):
     # Week 3 — BUILD 阶段
     generated_files: List[GeneratedFile] = Field(default_factory=list)
     build_dir: Optional[str] = None
+    build_passed: Optional[bool] = None  # 自动构建门结果（None = 未运行）
+    build_log: Optional[str] = None  # 失败时的编译器报错尾部
     errors: List[str] = Field(default_factory=list)
