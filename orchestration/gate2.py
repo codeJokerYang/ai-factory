@@ -34,6 +34,12 @@ def summarize_build(state: ProjectState) -> str:
         lines.append(f"Reviewer: {'✅ 通过' if cr.passed else '❌ 有阻塞问题'} — {cr.summary}")
         for issue in cr.issues:
             lines.append(f"  [{issue.severity}] {issue.file}: {issue.message}")
+    sr = state.security_report
+    if sr is not None:
+        verdict = "✅ 通过" if sr.passed else "🔴 一票否决（需人工 override）"
+        lines.append(f"Security: {verdict} risk={sr.risk_level}")
+        for f in sr.findings:
+            lines.append(f"  [{f.severity}] {f.file}: {f.kind}")
     lines.append("=" * 60)
     return "\n".join(lines)
 
