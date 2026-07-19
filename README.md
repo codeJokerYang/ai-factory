@@ -222,7 +222,7 @@ Claude → MCP:GitHub  → 提 PR
 
 > **Wiki 是骨架，RAG 是肌肉。先建 Wiki，项目大了再补 RAG。**
 
-### Wiki 四层结构
+### Wiki 五层结构
 
 ```
 wiki/
@@ -232,11 +232,16 @@ wiki/
 │   └── 每个功能一个文件，记录用户故事、接口、边界条件
 ├── conventions/     # 编码规范 → AI 知道"怎么写"
 │   └── 命名、目录、API 风格、错误处理
-└── runbooks/        # 运维手册 → AI 知道"怎么跑"
-    └── 部署、回滚、故障处理、PR 检查清单
+├── runbooks/        # 运维手册 → AI 知道"怎么跑"
+│   └── 部署、回滚、故障处理、PR 检查清单
+└── knowledge/       # L3 已验证跨项目案例 → AI 知道"哪里做成过"
+    └── projects/    # 全质量门通过后写入的脱敏、版本化 JSON
 ```
 
 **所有 Wiki 文件随代码一起更新、一起 commit、一起版本控制。**
+
+L3 案例只在 `build_cli "<idea>" --verify --gate2` 的 build、Reviewer、Security 和 Gate 2
+全部通过后生成；Builder 仅在 L2 模板未命中时检索一个最相关案例。
 
 ---
 

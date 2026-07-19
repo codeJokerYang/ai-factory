@@ -10,7 +10,6 @@
 | # | 任务 | 分支 | 状态 | 关联 Spec |
 |---|------|------|------|-----------|
 | 1 | v1 + B系列 + 粒度 + 保真度 + Reviewer(+自愈) + Security | `main` | ✅ 已并入 main，CI 绿 | `wiki/specs/*` |
-| 2 | Builder L2 方案模板缓存（确定性匹配 + prompt 注入） | `feat/builder-template-cache` | 已 rebase，91 测试通过，待更新 PR | `wiki/specs/001-builder-template-cache.md` |
 
 ---
 
@@ -41,6 +40,8 @@
 | 12 | Security agent：规则扫描（密钥/注入/前端泄露，0 token）+ 高危再 LLM + 一票否决（Gate 2 人工 override）；76 测试 | 2026-06-15 | - |
 | 13 | LangGraph 升级：LangGraphRunner（单通道，条件路由短路 + checkpointer 接口）+ make_runner 切换（FACTORY_RUNNER=langgraph）；agent/schema 不变；79 测试 | 2026-06-15 | #10 |
 | 14 | AI Code Guard 升级 Node.js 24 actions + `contents: read` 最小权限；81 测试 | 2026-07-20 | #13 |
+| 15 | Builder L2 方案模板缓存：确定性匹配 + prompt 注入；91 测试 | 2026-07-20 | #11 |
+| 16 | L3 跨项目知识案例缓存：质量门 + 脱敏 + 检索回退；108 测试 | 2026-07-20 | #12 |
 
 ---
 
@@ -55,9 +56,8 @@
 
 ## 💡 想法池
 
-- L3 跨项目方案与案例缓存（COST_OPTIMIZATION.md §7）
-- 跨项目知识库复用（Phase 4）
-- Decomposer 粒度约束（目标 12–18 节点）
+- L3 命中率、节省 token 与案例质量趋势统计
+- 架构模板自动优化（Phase 4）
 
 ---
 
@@ -74,6 +74,7 @@ python -m orchestration.cli "<idea>"
 python -m orchestration.build_cli "<idea>"
 python -m orchestration.build_cli "<idea>" --verify   # 生成后自动跑 npm build 门
 python -m orchestration.build_cli "<idea>" --gate2    # + 启 dev server / 截图 / Gate 2 审批
+python -m orchestration.build_cli "<idea>" --verify --gate2  # 全门通过后沉淀 L3 案例
 cd generated/<project> && npm install && npm run dev   # http://localhost:3000
 
 # Provider 切换（默认 Claude；示例 DeepSeek）:

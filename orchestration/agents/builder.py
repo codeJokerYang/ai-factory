@@ -4,7 +4,11 @@ whole-project 一次性生成；mock 数据，无外部服务。脚手架由 sca
 """
 from __future__ import annotations
 
+from pathlib import Path
+
+from .. import config
 from ..config import ALLOWED_EXTRA_DEPS, BUILDER_MAX_TOKENS, BUILDER_MODEL
+from ..knowledge_cache import match_knowledge_cases, render_knowledge_context
 from ..prompts.builder import SYSTEM, build_prompt, repair_prompt, revise_prompt
 from ..schemas import GeneratedFile
 from ..state import ProjectPhase, ProjectState
@@ -35,6 +39,10 @@ class Builder(Agent):
     name = "builder"
     model = BUILDER_MODEL
 
+    def __init__(self, llm, *, knowledge_dir: Path | None = None):
+        super().__init__(llm)
+        self.knowledge_dir = knowledge_dir or config.KNOWLEDGE_CACHE_DIR
+
     def run(self, state: ProjectState) -> ProjectState:
         if state.phase == ProjectPhase.FAILED:
             return state
@@ -47,10 +55,15 @@ class Builder(Agent):
         spec_json = state.product_spec.model_dump_json(indent=2)
         arch_json = state.architecture.model_dump_json(indent=2)
         template_context = render_template_context(match_templates(state.product_spec))
+        knowledge_context = ""
+        if not template_context:  # COST_OPTIMIZATION §7.2：L2 未命中才回退到 L3。
+            knowledge_context = render_knowledge_context(
+                match_knowledge_cases(state.product_spec, self.knowledge_dir)
+            )
         raw = self.llm.complete(
             model=self.model,
             system=SYSTEM,
-            prompt=build_prompt(spec_json, arch_json, template_context),
+            prompt=build_prompt(spec_json, arch_json, template_context, knowledge_context),
             max_tokens=BUILDER_MAX_TOKENS,
         )
         try:

@@ -227,6 +227,14 @@ def main(argv: Optional[List[str]] = None) -> int:
             state = make_gate_2()(state)
 
         if state.gate_2_approved:
+            from .knowledge_cache import save_knowledge_case
+
+            try:
+                case_path = save_knowledge_case(state)
+                print(f"🧠 L3 案例已缓存: {case_path}")
+            except (OSError, ValueError) as exc:
+                # 缓存是优化层，不得把已通过 Gate 2 的产品反向变成失败。
+                print(f"ℹ️  L3 案例未缓存: {exc}")
             print("\n✅ Gate 2 通过 — 可合并。")
             return 0
         print("\n↩️  Gate 2 驳回。")
