@@ -29,6 +29,13 @@
 - [ ] 环境变量已配置（如有新增）
 - [ ] 已知会下一版本需要的手动操作
 
+## CI 基线维护
+
+- `actions/checkout@v6`：Node.js 24 runtime；GitHub-hosted runner 可直接使用。
+- `actions/setup-python@v6`：Node.js 24 runtime；自托管 runner 需至少 `v2.327.1`。
+- workflow 顶层保持 `permissions: contents: read`；新增写操作时按 job 最小范围单独授权。
+- action major 升级后，除本地测试外必须在目标分支实际运行一次 `AI Code Guard`，确认测试和敏感文件检查均通过且无 runtime 弃用提醒。
+
 ---
 
 ## PR 描述模板

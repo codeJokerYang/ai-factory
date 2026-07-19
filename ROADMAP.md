@@ -10,7 +10,7 @@
 | # | 任务 | 分支 | 状态 | 关联 Spec |
 |---|------|------|------|-----------|
 | 1 | v1 + B系列 + 粒度 + 保真度 + Reviewer(+自愈) + Security | `main` | ✅ 已并入 main，CI 绿 | `wiki/specs/*` |
-| 2 | LangGraph 升级（LangGraphRunner + make_runner 切换点） | `feat/langgraph` | 已实现+测试，待 push/PR | - |
+| 2 | AI Code Guard 升级 Node.js 24 actions + 最小权限 | `feat/actions-node24` | 已实现，81 测试通过，待 PR | `wiki/runbooks/pr-checklist.md` |
 
 ---
 
@@ -39,7 +39,7 @@
 | 10 | Reviewer agent：Gate 2 前自动代码审查（CodeReview/ReviewIssue + advisory，high 入 warnings + Gate 2 摘要）；60 测试 | 2026-06-15 | - |
 | 11 | Reviewer 自愈闭环：否决→Builder.revise→复审（review_and_revise + revise_prompt），≤1 轮后升级 Gate 2；review 先于构建门；66 测试 | 2026-06-15 | - |
 | 12 | Security agent：规则扫描（密钥/注入/前端泄露，0 token）+ 高危再 LLM + 一票否决（Gate 2 人工 override）；76 测试 | 2026-06-15 | - |
-| 13 | LangGraph 升级：LangGraphRunner（单通道，条件路由短路 + checkpointer 接口）+ make_runner 切换（FACTORY_RUNNER=langgraph）；agent/schema 不变；79 测试 | 2026-06-15 | - |
+| 13 | LangGraph 升级：LangGraphRunner（单通道，条件路由短路 + checkpointer 接口）+ make_runner 切换（FACTORY_RUNNER=langgraph）；agent/schema 不变；79 测试 | 2026-06-15 | #10 |
 
 ---
 
