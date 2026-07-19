@@ -8,6 +8,7 @@ from ..config import ALLOWED_EXTRA_DEPS, BUILDER_MAX_TOKENS, BUILDER_MODEL
 from ..prompts.builder import SYSTEM, build_prompt, repair_prompt, revise_prompt
 from ..schemas import GeneratedFile
 from ..state import ProjectPhase, ProjectState
+from ..template_cache import match_templates, render_template_context
 from ..util import extract_json
 from .base import Agent
 
@@ -45,10 +46,11 @@ class Builder(Agent):
         state.phase = ProjectPhase.BUILDING
         spec_json = state.product_spec.model_dump_json(indent=2)
         arch_json = state.architecture.model_dump_json(indent=2)
+        template_context = render_template_context(match_templates(state.product_spec))
         raw = self.llm.complete(
             model=self.model,
             system=SYSTEM,
-            prompt=build_prompt(spec_json, arch_json),
+            prompt=build_prompt(spec_json, arch_json, template_context),
             max_tokens=BUILDER_MAX_TOKENS,
         )
         try:

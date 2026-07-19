@@ -26,6 +26,30 @@ def test_builder_parses_files():
     assert [f.path for f in st.generated_files] == ["app/page.tsx"]
 
 
+def test_builder_injects_matching_l2_template_into_prompt():
+    llm = MockLLM(responses={"[agent:builder]": BUILDER_JSON})
+    state = _state()
+    state.product_spec.core_features = ["用户登录", "数据看板"]
+
+    st = Builder(llm).run(state)
+
+    assert st.phase == ProjectPhase.BUILD_DONE
+    assert len(llm.calls) == 1
+    prompt = llm.calls[0]["prompt"]
+    assert "L2 方案模板" in prompt
+    assert "### auth: 认证与会话" in prompt
+    assert "### dashboard: Dashboard 与分析" in prompt
+
+
+def test_builder_keeps_original_prompt_path_when_no_template_matches():
+    llm = MockLLM(responses={"[agent:builder]": BUILDER_JSON})
+
+    st = Builder(llm).run(_state())
+
+    assert st.phase == ProjectPhase.BUILD_DONE
+    assert "L2 方案模板" not in llm.calls[0]["prompt"]
+
+
 def test_builder_requires_page():
     llm = MockLLM(responses={"[agent:builder]": json.dumps({"files": [{"path": "app/x.tsx", "content": "x"}]})})
     st = Builder(llm).run(_state())
