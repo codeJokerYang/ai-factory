@@ -7,6 +7,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from .. import config
+from ..cache_metrics import make_cache_lookup
 from ..config import ALLOWED_EXTRA_DEPS, BUILDER_MAX_TOKENS, BUILDER_MODEL
 from ..knowledge_cache import match_knowledge_cases, render_knowledge_context
 from ..prompts.builder import SYSTEM, build_prompt, repair_prompt, revise_prompt
@@ -54,12 +55,18 @@ class Builder(Agent):
         state.phase = ProjectPhase.BUILDING
         spec_json = state.product_spec.model_dump_json(indent=2)
         arch_json = state.architecture.model_dump_json(indent=2)
-        template_context = render_template_context(match_templates(state.product_spec))
+        template_matches = match_templates(state.product_spec)
+        template_context = render_template_context(template_matches)
+        knowledge_matches = []
         knowledge_context = ""
         if not template_context:  # COST_OPTIMIZATION §7.2：L2 未命中才回退到 L3。
-            knowledge_context = render_knowledge_context(
-                match_knowledge_cases(state.product_spec, self.knowledge_dir)
-            )
+            knowledge_matches = match_knowledge_cases(state.product_spec, self.knowledge_dir)
+            knowledge_context = render_knowledge_context(knowledge_matches)
+        state.cache_lookup = make_cache_lookup(
+            template_matches=template_matches,
+            knowledge_matches=knowledge_matches,
+            context=template_context or knowledge_context,
+        )
         raw = self.llm.complete(
             model=self.model,
             system=SYSTEM,

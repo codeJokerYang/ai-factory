@@ -143,6 +143,9 @@ def test_full_build_pipeline_injects_l2_template_context():
     builder_prompt = llm.calls[-1]["prompt"]
     assert "### auth: 认证与会话" in builder_prompt
     assert "### dashboard: Dashboard 与分析" in builder_prompt
+    assert out.cache_lookup is not None
+    assert out.cache_lookup.source == "l2"
+    assert out.cache_lookup.match_ids == ["auth", "dashboard"]
 
 
 def test_full_build_pipeline_falls_back_to_l3_case(tmp_path):
@@ -180,3 +183,6 @@ def test_full_build_pipeline_falls_back_to_l3_case(tmp_path):
     builder_prompt = llm.calls[-1]["prompt"]
     assert "L3 已验证跨项目案例" in builder_prompt
     assert "已验证案例: past-resume-project" in builder_prompt
+    assert out.cache_lookup is not None
+    assert out.cache_lookup.source == "l3"
+    assert out.cache_lookup.estimated_reused_tokens > 0

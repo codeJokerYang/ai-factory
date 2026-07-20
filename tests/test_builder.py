@@ -39,6 +39,10 @@ def test_builder_injects_matching_l2_template_into_prompt():
     assert "L2 方案模板" in prompt
     assert "### auth: 认证与会话" in prompt
     assert "### dashboard: Dashboard 与分析" in prompt
+    assert st.cache_lookup is not None
+    assert st.cache_lookup.source == "l2"
+    assert st.cache_lookup.match_ids == ["auth", "dashboard"]
+    assert st.cache_lookup.estimated_reused_tokens > 0
 
 
 def test_builder_keeps_original_prompt_path_when_no_template_matches():
@@ -48,6 +52,9 @@ def test_builder_keeps_original_prompt_path_when_no_template_matches():
 
     assert st.phase == ProjectPhase.BUILD_DONE
     assert "L2 方案模板" not in llm.calls[0]["prompt"]
+    assert st.cache_lookup is not None
+    assert st.cache_lookup.source == "miss"
+    assert st.cache_lookup.estimated_reused_tokens == 0
 
 
 def test_builder_requires_page():

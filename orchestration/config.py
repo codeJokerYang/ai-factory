@@ -25,6 +25,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 WIKI_SPECS_DIR = PROJECT_ROOT / "wiki" / "specs"
 WIKI_DECISIONS_DIR = PROJECT_ROOT / "wiki" / "decisions"
 KNOWLEDGE_CACHE_DIR = PROJECT_ROOT / "wiki" / "knowledge" / "projects"
+CACHE_METRICS_FILE = PROJECT_ROOT / ".factory" / "cache-metrics.jsonl"
 TASKS_JSON = PROJECT_ROOT / "tasks.json"
 
 # --- v1 固定栈 (Architect 不自动选型，收窄问题空间) ------------------------

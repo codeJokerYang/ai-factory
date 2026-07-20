@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-from .schemas import Architecture, CodeReview, Dag, GeneratedFile, ProductSpec, SecurityReport
+from .schemas import Architecture, CacheLookup, CodeReview, Dag, GeneratedFile, ProductSpec, SecurityReport
 
 
 class ProjectPhase(str, Enum):
@@ -42,6 +42,7 @@ class ProjectState(BaseModel):
     gate_1_feedback: Optional[str] = None
     # Week 3 — BUILD 阶段
     generated_files: List[GeneratedFile] = Field(default_factory=list)
+    cache_lookup: Optional[CacheLookup] = None  # Builder 的 L2/L3/miss 可观测记录
     extra_dependencies: Dict[str, str] = Field(default_factory=dict)  # Builder 声明的白名单依赖
     build_dir: Optional[str] = None
     build_passed: Optional[bool] = None  # 自动构建门结果（None = 未运行）

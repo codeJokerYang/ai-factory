@@ -243,6 +243,17 @@ wiki/
 L3 案例只在 `build_cli "<idea>" --verify --gate2` 的 build、Reviewer、Security 和 Gate 2
 全部通过后生成；Builder 仅在 L2 模板未命中时检索一个最相关案例。
 
+每次 Builder 检索还会把不含业务文本的 L2/L3/miss 事件写入本地
+`.factory/cache-metrics.jsonl`。查看命中率、L3 回退命中率、复用 context token 估算和成功案例
+的修复负担趋势：
+
+```bash
+python -m orchestration.cache_metrics
+python -m orchestration.cache_metrics --json
+```
+
+token 数是用于相对比较的本地估算，不代表供应商账单节省；`.factory/` 默认不进入版本控制。
+
 ---
 
 ## 7. LangChain 编排层
