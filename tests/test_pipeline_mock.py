@@ -2,6 +2,7 @@
 import json
 
 from orchestration.agents.architect import Architect
+from orchestration.agents.builder import Builder
 from orchestration.agents.decomposer import Decomposer
 from orchestration.agents.planner import Planner
 from orchestration.config import FIXED_STACK
@@ -52,6 +53,10 @@ DECOMPOSER_JSON = json.dumps(
             {"id": "003-scoring", "depends": ["002-upload"], "owner": "claude", "risk": "high", "done_criteria": "返回分数", "est_minutes": 90},
         ],
     }
+)
+
+BUILDER_JSON = json.dumps(
+    {"files": [{"path": "app/page.tsx", "content": "export default function Page() { return <main />; }"}]}
 )
 
 
@@ -107,3 +112,33 @@ def test_pipeline_rejected_writes_nothing_terminal():
     assert out.phase == ProjectPhase.PLAN_REJECTED
     assert out.gate_1_approved is False
     assert out.gate_1_feedback == "方向不对"
+
+
+def test_full_build_pipeline_injects_l2_template_context():
+    planner_data = json.loads(PLANNER_JSON)
+    planner_data["core_features"] = ["用户登录", "Dashboard"]
+    llm = MockLLM(
+        responses={
+            "[agent:planner]": json.dumps(planner_data),
+            "[agent:architect]": ARCHITECT_JSON,
+            "[agent:decomposer]": DECOMPOSER_JSON,
+            "[agent:builder]": BUILDER_JSON,
+        }
+    )
+    runner = SequentialRunner(
+        [
+            Planner(llm).run,
+            Architect(llm).run,
+            Decomposer(llm).run,
+            make_gate_1(approver=lambda state: (True, None)),
+            Builder(llm).run,
+        ]
+    )
+
+    out = runner.run(ProjectState(project_id="t", idea="做一个会员数据看板"))
+
+    assert out.phase == ProjectPhase.BUILD_DONE
+    assert len(llm.calls) == 4
+    builder_prompt = llm.calls[-1]["prompt"]
+    assert "### auth: 认证与会话" in builder_prompt
+    assert "### dashboard: Dashboard 与分析" in builder_prompt
