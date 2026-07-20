@@ -47,8 +47,9 @@ def dev_server(app_dir, port: int = 3000, ready_timeout: int = 120) -> Iterator[
         proc.terminate()
         try:
             proc.wait(timeout=10)
-        except Exception:
+        except subprocess.TimeoutExpired:
             proc.kill()
+            proc.wait(timeout=5)
 
 
 def screenshot(url: str, out_path, width: int = 1280, height: int = 900) -> bool:

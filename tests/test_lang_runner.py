@@ -55,3 +55,20 @@ def test_make_runner_selects_engine():
     assert isinstance(make_runner([], runner="sequential"), SequentialRunner)
     assert isinstance(make_runner([], runner="langgraph"), LangGraphRunner)
     assert isinstance(make_runner([]), SequentialRunner)  # 默认
+
+
+def test_langgraph_converts_step_exception_to_failed_state():
+    def unavailable(_state):
+        raise ConnectionError("gateway unavailable")
+
+    out = LangGraphRunner([unavailable]).run(_state())
+
+    assert out.phase == ProjectPhase.FAILED
+    assert any("ConnectionError" in error for error in out.errors)
+
+
+def test_langgraph_reuses_compiled_graph():
+    runner = LangGraphRunner(_steps([]))
+    first = runner._compile()
+    second = runner._compile()
+    assert first is second

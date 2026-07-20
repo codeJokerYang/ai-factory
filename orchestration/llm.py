@@ -25,6 +25,8 @@ class AnthropicLLM:
         base_url = base_url or config.get_base_url()
         if base_url:
             kwargs["base_url"] = base_url
+        kwargs["max_retries"] = config.LLM_MAX_RETRIES
+        kwargs["timeout"] = config.LLM_TIMEOUT_SECONDS
         # Bearer token（Anthropic 兼容网关，如 GLM）优先；否则用 x-api-key。
         auth_token = os.environ.get(config.AUTH_TOKEN_ENV)
         if auth_token and not api_key:
@@ -66,7 +68,9 @@ class MockLLM:
     def complete(
         self, *, model: str, system: str, prompt: str, max_tokens: int = config.MAX_TOKENS
     ) -> str:
-        self.calls.append({"model": model, "system": system, "prompt": prompt})
+        self.calls.append(
+            {"model": model, "system": system, "prompt": prompt, "max_tokens": max_tokens}
+        )
         if self.handler is not None:
             return self.handler(model, system, prompt)
         for marker, value in self.responses.items():

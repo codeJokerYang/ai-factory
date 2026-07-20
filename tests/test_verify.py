@@ -1,4 +1,6 @@
 """自动构建门测试：mock subprocess，覆盖通过 / build 失败 / install 失败 / 无 package.json。"""
+import subprocess
+
 from orchestration import verify
 from orchestration.verify import verify_app
 
@@ -75,3 +77,30 @@ def test_verify_skip_install(monkeypatch, tmp_path):
     assert res.passed is True
     # 只应跑 build，不跑 install
     assert all("install" not in a for a in seen)
+
+
+def test_verify_reports_timeout_without_crashing(monkeypatch, tmp_path):
+    _pkg(tmp_path)
+
+    def fake_run(args, **kw):
+        raise subprocess.TimeoutExpired(args, kw["timeout"], output="still building")
+
+    monkeypatch.setattr(verify.subprocess, "run", fake_run)
+    res = verify_app(tmp_path, install=False, timeout=3)
+    assert res.passed is False
+    assert res.step == "build"
+    assert "超时" in res.log
+    assert "still building" in res.log
+
+
+def test_verify_reports_missing_npm_without_crashing(monkeypatch, tmp_path):
+    _pkg(tmp_path)
+
+    def fake_run(args, **kw):
+        raise FileNotFoundError("npm not found")
+
+    monkeypatch.setattr(verify.subprocess, "run", fake_run)
+    res = verify_app(tmp_path, install=False)
+    assert res.passed is False
+    assert res.step == "build"
+    assert "无法启动 npm" in res.log

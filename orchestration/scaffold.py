@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from .schemas import GeneratedFile
+from .util import npm_package_name, resolve_within
 
 _PACKAGE_JSON = """{
   "name": "__PROJECT__",
@@ -122,7 +123,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 
 def scaffold_files(project: str, extra_deps: Optional[Dict[str, str]] = None) -> Dict[str, str]:
     extra_deps = extra_deps or {}
-    pkg = json.loads(_PACKAGE_JSON.replace("__PROJECT__", project))
+    pkg = json.loads(_PACKAGE_JSON.replace("__PROJECT__", npm_package_name(project)))
     pkg["dependencies"].update(extra_deps)  # 合并白名单额外依赖
     files = {
         "package.json": json.dumps(pkg, indent=2) + "\n",
@@ -148,11 +149,12 @@ def write_app(
     """写脚手架 + 特性文件到 target/。特性文件覆盖同名脚手架文件。"""
     files: Dict[str, str] = scaffold_files(project, extra_deps)
     for f in feature_files:
-        files[f.path.replace("\\", "/")] = f.content
+        files[f.path] = f.content
 
+    # Validate every untrusted path before the first write to avoid partial output.
+    resolved_files = [(resolve_within(target, rel), content) for rel, content in files.items()]
     written: List[Path] = []
-    for rel, content in files.items():
-        p = target / rel
+    for p, content in resolved_files:
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(content, encoding="utf-8")
         written.append(p)

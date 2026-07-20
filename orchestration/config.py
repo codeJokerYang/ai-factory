@@ -8,6 +8,15 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+
+def bounded_env_int(name: str, default: int, minimum: int, maximum: int) -> int:
+    """Read a bounded integer without making a malformed optional env var fatal at import time."""
+    try:
+        value = int(os.environ.get(name, str(default)))
+    except ValueError:
+        return default
+    return max(minimum, min(maximum, value))
+
 # --- Models (COST_OPTIMIZATION.md §9.2) ----------------------------------
 # 决策层用最强模型（调用极少）；Decomposer 用中档。
 # 默认 Claude；可用 FACTORY_MODEL（一刀切）或单独的 FACTORY_*_MODEL 覆盖，
@@ -41,6 +50,8 @@ FIXED_STACK = {
 # --- LLM settings --------------------------------------------------------
 MAX_TOKENS = 8000
 BUILDER_MAX_TOKENS = 8000  # 整项目生成需要更大输出预算（DeepSeek 上限 ~8192）
+LLM_MAX_RETRIES = bounded_env_int("FACTORY_LLM_MAX_RETRIES", 3, 0, 10)
+LLM_TIMEOUT_SECONDS = bounded_env_int("FACTORY_LLM_TIMEOUT_SECONDS", 180, 10, 1800)
 
 # --- DAG 粒度约束 (Decomposer) -------------------------------------------
 # 稳定性测显示同一 idea 节点数 8–20 波动；收敛到目标区间，过界给非阻塞 warning。

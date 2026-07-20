@@ -1,5 +1,8 @@
 import json
 
+import pytest
+from pydantic import ValidationError
+
 from orchestration.agents.builder import Builder
 from orchestration.llm import MockLLM
 from orchestration.scaffold import write_app
@@ -73,3 +76,17 @@ def test_write_app_merges_scaffold_and_features(tmp_path):
     assert (target / "app" / "page.tsx").read_text(encoding="utf-8") == PAGE
     # project name 注入 package.json
     assert '"name": "demo"' in (target / "package.json").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("path", ["../outside.txt", "app/../../outside.txt", "/tmp/outside.txt", "C:\\outside.txt"])
+def test_generated_file_rejects_paths_outside_app(path):
+    with pytest.raises(ValidationError):
+        GeneratedFile(path=path, content="nope")
+
+
+def test_write_app_uses_npm_safe_package_name(tmp_path):
+    target = tmp_path / "app"
+    write_app(target, "产品 Demo", [GeneratedFile(path="app/page.tsx", content=PAGE)])
+
+    package = json.loads((target / "package.json").read_text(encoding="utf-8"))
+    assert package["name"] == "demo"

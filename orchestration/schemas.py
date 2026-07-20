@@ -9,7 +9,9 @@ from __future__ import annotations
 from enum import Enum
 from typing import Dict, List, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from .util import normalize_relative_path
 
 
 class UserStory(BaseModel):
@@ -81,6 +83,11 @@ class GeneratedFile(BaseModel):
 
     path: str
     content: str
+
+    @field_validator("path")
+    @classmethod
+    def validate_path(cls, value: str) -> str:
+        return normalize_relative_path(value)
 
 
 class CacheLookup(BaseModel):
