@@ -39,6 +39,9 @@ generated/
 /tasks.json
 /tasks.draft.json
 
+# 本地运行指标（不进入版本控制）
+/.factory/
+
 # Python
 __pycache__/
 *.py[cod]

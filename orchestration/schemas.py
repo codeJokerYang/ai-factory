@@ -7,7 +7,7 @@ Agent 在 ProjectState 上读写这些 typed 对象；orchestration 引擎（现
 from __future__ import annotations
 
 from enum import Enum
-from typing import Dict, List
+from typing import Dict, List, Literal
 
 from pydantic import BaseModel, Field
 
@@ -81,6 +81,15 @@ class GeneratedFile(BaseModel):
 
     path: str
     content: str
+
+
+class CacheLookup(BaseModel):
+    """单次 Builder 缓存检索观测；不包含项目名、需求文本或其他业务数据。"""
+
+    source: Literal["l2", "l3", "miss"]
+    match_ids: List[str] = Field(default_factory=list, max_length=2)
+    context_chars: int = Field(default=0, ge=0)
+    estimated_reused_tokens: int = Field(default=0, ge=0)
 
 
 class ReviewIssue(BaseModel):

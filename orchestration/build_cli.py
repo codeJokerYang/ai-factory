@@ -17,6 +17,7 @@ from .agents.architect import Architect
 from .agents.builder import Builder
 from .agents.decomposer import Decomposer
 from .agents.planner import Planner
+from .cache_metrics import format_cache_lookup, record_cache_lookup, record_case_saved
 from .gates import make_gate_1
 from .io_writers import write_outputs
 from .runner import make_runner
@@ -117,6 +118,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     state = runner.run(state)
 
+    if state.cache_lookup is not None:
+        try:
+            record_cache_lookup(state.cache_lookup)
+        except (OSError, ValueError) as exc:
+            # 可观测性与缓存相同，属于非阻塞优化层。
+            state.warnings.append(f"cache metrics: lookup 未记录（{exc}）")
+
     if state.phase == ProjectPhase.FAILED:
         print("\n❌ 构建失败:")
         for err in state.errors:
@@ -125,6 +133,8 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     for w in state.warnings:
         print(f"⚠️  {w}")
+    if state.cache_lookup is not None:
+        print(f"\n🧠 {format_cache_lookup(state.cache_lookup)}")
 
     # 持久化 Plan 产物（spec / architecture / tasks.json）—— 与 orchestration.cli 一致
     plan_paths = write_outputs(state)
@@ -232,6 +242,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             try:
                 case_path = save_knowledge_case(state)
                 print(f"🧠 L3 案例已缓存: {case_path}")
+                try:
+                    record_case_saved(state)
+                except (OSError, ValueError) as exc:
+                    print(f"ℹ️  缓存质量指标未记录: {exc}")
             except (OSError, ValueError) as exc:
                 # 缓存是优化层，不得把已通过 Gate 2 的产品反向变成失败。
                 print(f"ℹ️  L3 案例未缓存: {exc}")
