@@ -7,6 +7,7 @@ from orchestration.agents.decomposer import Decomposer
 from orchestration.agents.planner import Planner
 from orchestration.config import FIXED_STACK
 from orchestration.gates import make_gate_1
+from orchestration.knowledge_cache import KnowledgeCase
 from orchestration.llm import MockLLM
 from orchestration.runner import SequentialRunner
 from orchestration.state import ProjectPhase, ProjectState
@@ -142,3 +143,40 @@ def test_full_build_pipeline_injects_l2_template_context():
     builder_prompt = llm.calls[-1]["prompt"]
     assert "### auth: 认证与会话" in builder_prompt
     assert "### dashboard: Dashboard 与分析" in builder_prompt
+
+
+def test_full_build_pipeline_falls_back_to_l3_case(tmp_path):
+    case = KnowledgeCase(
+        project_name="past-resume-project",
+        one_liner="上传 PDF 简历并计算职位匹配度",
+        core_features=["PDF 简历解析", "JD 匹配评分"],
+        stack={"frontend": "Next.js"},
+        data_model="Resume; MatchScore",
+        api_design=["POST /api/v1/matches — 计算匹配分"],
+        deploy_target="Vercel",
+    )
+    (tmp_path / "case-past.json").write_text(case.model_dump_json(), encoding="utf-8")
+    llm = MockLLM(
+        responses={
+            "[agent:planner]": PLANNER_JSON,
+            "[agent:architect]": ARCHITECT_JSON,
+            "[agent:decomposer]": DECOMPOSER_JSON,
+            "[agent:builder]": BUILDER_JSON,
+        }
+    )
+    runner = SequentialRunner(
+        [
+            Planner(llm).run,
+            Architect(llm).run,
+            Decomposer(llm).run,
+            make_gate_1(approver=lambda state: (True, None)),
+            Builder(llm, knowledge_dir=tmp_path).run,
+        ]
+    )
+
+    out = runner.run(ProjectState(project_id="t", idea="做一个简历优化工具"))
+
+    assert out.phase == ProjectPhase.BUILD_DONE
+    builder_prompt = llm.calls[-1]["prompt"]
+    assert "L3 已验证跨项目案例" in builder_prompt
+    assert "已验证案例: past-resume-project" in builder_prompt

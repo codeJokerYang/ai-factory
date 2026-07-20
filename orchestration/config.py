@@ -24,6 +24,7 @@ SECURITY_MODEL = _MODEL_OVERRIDE or os.environ.get("FACTORY_SECURITY_MODEL", "cl
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 WIKI_SPECS_DIR = PROJECT_ROOT / "wiki" / "specs"
 WIKI_DECISIONS_DIR = PROJECT_ROOT / "wiki" / "decisions"
+KNOWLEDGE_CACHE_DIR = PROJECT_ROOT / "wiki" / "knowledge" / "projects"
 TASKS_JSON = PROJECT_ROOT / "tasks.json"
 
 # --- v1 固定栈 (Architect 不自动选型，收窄问题空间) ------------------------
