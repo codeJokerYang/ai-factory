@@ -38,3 +38,33 @@ def test_runner_stops_on_terminal_phase():
 
     assert out.phase == ProjectPhase.FAILED
     assert "ran" not in out.errors
+
+
+def test_runner_converts_step_exception_to_failed_state():
+    def unavailable(_state):
+        raise TimeoutError("provider timed out")
+
+    out = SequentialRunner([unavailable]).run(_state())
+
+    assert out.phase == ProjectPhase.FAILED
+    assert any("TimeoutError" in error and "provider timed out" in error for error in out.errors)
+
+
+def test_runner_rejects_invalid_step_result():
+    out = SequentialRunner([lambda _state: None]).run(_state())
+
+    assert out.phase == ProjectPhase.FAILED
+    assert any("expected ProjectState" in error for error in out.errors)
+
+
+def test_runner_stops_after_gate_2_rejection():
+    ran = []
+
+    def reject(state):
+        state.phase = ProjectPhase.GATE_2_REJECTED
+        return state
+
+    out = SequentialRunner([reject, lambda state: ran.append(True) or state]).run(_state())
+
+    assert out.phase == ProjectPhase.GATE_2_REJECTED
+    assert ran == []

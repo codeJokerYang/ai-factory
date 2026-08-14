@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import List, Optional, TypedDict
 
-from .runner import Step
+from .runner import Step, run_step_safely
 from .state import ProjectPhase, ProjectState
 
 _TERMINAL = {
@@ -27,8 +27,11 @@ class LangGraphRunner:
     def __init__(self, steps: List[Step], checkpointer=None):
         self.steps = steps
         self.checkpointer = checkpointer
+        self._compiled = None
 
     def _compile(self):
+        if self._compiled is not None:
+            return self._compiled
         from langgraph.graph import END, START, StateGraph
 
         g = StateGraph(_GraphState)
@@ -36,13 +39,15 @@ class LangGraphRunner:
 
         def make_node(step: Step):
             def node(gs: _GraphState) -> dict:
-                return {"state": step(gs["state"])}
+                return {"state": run_step_safely(step, gs["state"])}
 
             return node
 
         for name, step in zip(names, self.steps):
             g.add_node(name, make_node(step))
 
+        if not names:
+            raise ValueError("LangGraphRunner requires at least one step")
         g.add_edge(START, names[0])
         for i, name in enumerate(names):
             if i + 1 >= len(names):
@@ -54,7 +59,8 @@ class LangGraphRunner:
                 return END if gs["state"].phase in _TERMINAL else _nxt
 
             g.add_conditional_edges(name, router, {nxt: nxt, END: END})
-        return g.compile(checkpointer=self.checkpointer)
+        self._compiled = g.compile(checkpointer=self.checkpointer)
+        return self._compiled
 
     def run(self, state: ProjectState, thread_id: str = "default") -> ProjectState:
         graph = self._compile()

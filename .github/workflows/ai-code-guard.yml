@@ -61,7 +61,11 @@ jobs:
 
       - name: Check for sensitive files
         run: |
-          SENSITIVE=$(grep -E '(\.env$|\.env\.|secret|credential|\.pem$|\.key$)' changed_files.txt || true)
+          # .env.example is the repository's public configuration template.
+          # Keep every other environment, secret, credential, and key file blocked.
+          SENSITIVE=$(grep -Fvx '.env.example' changed_files.txt \
+            | grep -E '(\.env$|\.env\.|secret|credential|\.pem$|\.key$)' \
+            || true)
           if [ -n "$SENSITIVE" ]; then
             echo "❌ 检测到敏感文件:"
             echo "$SENSITIVE"

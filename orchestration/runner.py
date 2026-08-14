@@ -17,7 +17,29 @@ from .state import ProjectPhase, ProjectState
 Step = Callable[[ProjectState], ProjectState]
 
 # 这些 phase 一旦出现就停止后续步骤（失败/被拒绝）。
-_TERMINAL = {ProjectPhase.FAILED, ProjectPhase.PLAN_REJECTED}
+_TERMINAL = {
+    ProjectPhase.FAILED,
+    ProjectPhase.PLAN_REJECTED,
+    ProjectPhase.GATE_2_REJECTED,
+}
+
+
+def run_step_safely(step: Step, state: ProjectState) -> ProjectState:
+    """Run one pipeline step without allowing provider or plugin failures to crash the CLI."""
+    name = getattr(step, "__qualname__", getattr(step, "__name__", step.__class__.__name__))
+    try:
+        result = step(state)
+    except Exception as exc:  # provider/network/plugin boundary; KeyboardInterrupt still propagates
+        state.errors.append(f"runner[{name}]: {type(exc).__name__}: {exc}")
+        state.phase = ProjectPhase.FAILED
+        return state
+    if not isinstance(result, ProjectState):
+        state.errors.append(
+            f"runner[{name}]: invalid result {type(result).__name__}; expected ProjectState"
+        )
+        state.phase = ProjectPhase.FAILED
+        return state
+    return result
 
 
 class SequentialRunner:
@@ -26,7 +48,7 @@ class SequentialRunner:
 
     def run(self, state: ProjectState) -> ProjectState:
         for step in self.steps:
-            state = step(state)
+            state = run_step_safely(step, state)
             if state.phase in _TERMINAL:
                 break
         return state

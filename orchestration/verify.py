@@ -33,14 +33,30 @@ def _tail(text: str, n: int) -> str:
 
 
 def _run(sub: List[str], cwd: Path, timeout: int):
-    proc = subprocess.run(
-        _npm_args(sub),
-        cwd=str(cwd),
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-    )
-    return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
+    try:
+        proc = subprocess.run(
+            _npm_args(sub),
+            cwd=str(cwd),
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+        return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
+    except subprocess.TimeoutExpired as exc:
+        output = _exception_output(exc)
+        return 124, f"命令执行超时（{timeout} 秒）\n{output}".rstrip()
+    except OSError as exc:
+        return 127, f"无法启动 npm 命令: {exc}"
+
+
+def _exception_output(exc: subprocess.TimeoutExpired) -> str:
+    chunks = []
+    for value in (exc.stdout, exc.stderr):
+        if isinstance(value, bytes):
+            chunks.append(value.decode(errors="replace"))
+        elif value:
+            chunks.append(value)
+    return "".join(chunks)
 
 
 def verify_app(

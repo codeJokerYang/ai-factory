@@ -13,6 +13,7 @@ from typing import Dict
 from . import config
 from .schemas import Architecture, Dag, ProductSpec
 from .state import ProjectState
+from .util import safe_path_component
 
 
 def write_outputs(state: ProjectState, *, draft: bool = False) -> Dict[str, Path]:
@@ -20,14 +21,15 @@ def write_outputs(state: ProjectState, *, draft: bool = False) -> Dict[str, Path
         raise ValueError("write_outputs: state 缺少 spec / architecture / dag")
 
     project = state.product_spec.project_name or state.project_id
+    project_file = safe_path_component(project, fallback=state.project_id)
     suffix = ".draft" if draft else ""
     status = "DRAFT（未审批）" if draft else "APPROVED"
 
     config.WIKI_SPECS_DIR.mkdir(parents=True, exist_ok=True)
     config.WIKI_DECISIONS_DIR.mkdir(parents=True, exist_ok=True)
 
-    spec_path = config.WIKI_SPECS_DIR / f"{project}{suffix}.md"
-    arch_path = config.WIKI_DECISIONS_DIR / f"{project}-architecture{suffix}.md"
+    spec_path = config.WIKI_SPECS_DIR / f"{project_file}{suffix}.md"
+    arch_path = config.WIKI_DECISIONS_DIR / f"{project_file}-architecture{suffix}.md"
     dag_path = (
         config.TASKS_JSON
         if not draft

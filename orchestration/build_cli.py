@@ -23,6 +23,7 @@ from .io_writers import write_outputs
 from .runner import make_runner
 from .scaffold import write_app
 from .state import ProjectPhase, ProjectState
+from .util import safe_path_component
 
 
 def build_and_verify(target, project, state, builder, *, verify_fn=None, write_fn=None, max_repairs=1):
@@ -140,7 +141,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     plan_paths = write_outputs(state)
 
     project = state.product_spec.project_name
-    target = config.GENERATED_DIR / project
+    project_dir = safe_path_component(project, fallback=state.project_id)
+    target = config.GENERATED_DIR / project_dir
     written = write_app(target, project, state.generated_files, state.extra_dependencies)
     state.build_dir = str(target)
 
@@ -228,7 +230,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             if not ready:
                 print(f"⚠️  dev server 未在超时内就绪：{url}（可手动打开确认）")
             else:
-                shot = config.GENERATED_DIR / f"{project}.preview.png"
+                shot = config.GENERATED_DIR / f"{project_dir}.preview.png"
                 if screenshot(url, shot):
                     state.screenshot_path = str(shot)
                     print(f"📸 截图: {shot}")
