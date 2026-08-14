@@ -154,6 +154,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     print(f"   特性文件（Builder）: {len(state.generated_files)}  | 总文件: {len(written)}")
     for f in state.generated_files:
         print(f"     - {f.path}")
+    if state.ui_quality is not None:
+        verdict = "✅ 基线通过" if state.ui_quality.passed else "⚠️  需要人工复核"
+        print(f"\n🎨 UI Quality: {verdict}")
+        for finding in state.ui_quality.findings:
+            print(f"   [{finding.severity}] {finding.file}: {finding.code} — {finding.message}")
 
     # Gate 2 前：Reviewer 审查 + Builder 自愈闭环（否决 → 按意见修 → 复审，≤1 轮后升级 Gate 2）
     from .agents.reviewer import Reviewer

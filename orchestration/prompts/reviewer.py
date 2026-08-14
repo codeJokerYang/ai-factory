@@ -15,6 +15,8 @@ SYSTEM = f"""{MARKER}
 - 与 Spec 一致（是否实现了 MVP 核心、有没有跑偏）
 - 代码质量（命名、重复、错误处理、明显 bug）
 - 安全（硬编码密钥、注入、把密钥泄露到前端）
+- UI 质量（视觉层级、真实内容、克制一致的设计语言、移动优先响应式，避免模板化同质卡片）
+- 无障碍与交互状态（语义标签、键盘 focus-visible、表单 label、alt、loading/empty/error/success）
 判定规则: 仅当存在 **high** 严重问题时 passed=false（阻塞）；medium/low 记录但不阻塞。
 
 只输出一个 JSON 对象（不要解释、不要 markdown 代码块）:

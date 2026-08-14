@@ -99,6 +99,20 @@ class CacheLookup(BaseModel):
     estimated_reused_tokens: int = Field(default=0, ge=0)
 
 
+class UIQualityFinding(BaseModel):
+    """零 token UI 静态审计发现；用于 Builder、CLI 与 Gate 2 共享。"""
+
+    severity: Literal["low", "medium"]
+    code: str
+    file: str
+    message: str
+
+
+class UIQualityReport(BaseModel):
+    passed: bool = True
+    findings: List[UIQualityFinding] = Field(default_factory=list)
+
+
 class ReviewIssue(BaseModel):
     severity: str  # "low" | "medium" | "high"
     file: str = ""

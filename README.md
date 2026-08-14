@@ -254,6 +254,21 @@ python -m orchestration.cache_metrics --json
 
 token 数是用于相对比较的本地估算，不代表供应商账单节省；`.factory/` 默认不进入版本控制。
 
+### 生成 UI 质量基线
+
+Builder 生成的 Next.js 应用现在自带一套轻量视觉底座：颜色令牌、排版层级、柔和阴影、响应式
+容器，以及按钮、输入框、面板和状态提示等基础类。Builder 与 Reviewer 共用 UI 质量契约，要求
+移动优先、语义结构、真实内容、完整交互状态和基础无障碍。
+
+生成后还会执行零 token 静态审计，并把结果展示在 CLI 与 Gate 2：
+
+- `missing-main` / `missing-h1`：语义或视觉层级缺失。
+- `missing-responsive`：未发现移动端以上的响应式断点。
+- `focus-visible` / `form-label` / `image-alt`：键盘与辅助技术回退不足。
+- `clickable-static`：使用可点击 `div/span` 代替语义控件。
+
+静态审计是 advisory；最终视觉、内容密度和品牌适配仍由 Gate 2 截图人工确认。
+
 ---
 
 ## 7. LangChain 编排层

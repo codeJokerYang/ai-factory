@@ -57,7 +57,18 @@ DECOMPOSER_JSON = json.dumps(
 )
 
 BUILDER_JSON = json.dumps(
-    {"files": [{"path": "app/page.tsx", "content": "export default function Page() { return <main />; }"}]}
+    {
+        "files": [
+            {
+                "path": "app/page.tsx",
+                "content": (
+                    "export default function Page() { return <main className=\"ui-shell\">"
+                    "<section className=\"grid gap-6 md:grid-cols-2\"><h1>Demo</h1>"
+                    "</section></main>; }"
+                ),
+            }
+        ]
+    }
 )
 
 
@@ -146,6 +157,8 @@ def test_full_build_pipeline_injects_l2_template_context():
     assert out.cache_lookup is not None
     assert out.cache_lookup.source == "l2"
     assert out.cache_lookup.match_ids == ["auth", "dashboard"]
+    assert out.ui_quality is not None
+    assert out.ui_quality.passed is True
 
 
 def test_full_build_pipeline_falls_back_to_l3_case(tmp_path):
@@ -186,3 +199,5 @@ def test_full_build_pipeline_falls_back_to_l3_case(tmp_path):
     assert out.cache_lookup is not None
     assert out.cache_lookup.source == "l3"
     assert out.cache_lookup.estimated_reused_tokens > 0
+    assert out.ui_quality is not None
+    assert out.ui_quality.passed is True

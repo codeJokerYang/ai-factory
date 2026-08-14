@@ -14,6 +14,7 @@ from ..prompts.builder import SYSTEM, build_prompt, repair_prompt, revise_prompt
 from ..schemas import GeneratedFile
 from ..state import ProjectPhase, ProjectState
 from ..template_cache import match_templates, render_template_context
+from ..ui_quality import audit_ui_quality
 from ..util import extract_json
 from .base import Agent
 
@@ -34,6 +35,16 @@ def _parse_output(raw: str):
         else:
             dropped.append(name)
     return files, deps, dropped
+
+
+def _record_ui_quality(state: ProjectState, files) -> None:
+    """刷新 UI 审计与对应 warning，避免 repair/revise 后保留过期发现。"""
+    state.warnings = [warning for warning in state.warnings if not warning.startswith("ui-quality[")]
+    state.ui_quality = audit_ui_quality(files)
+    for finding in state.ui_quality.findings:
+        state.warnings.append(
+            f"ui-quality[{finding.severity}] {finding.file}: {finding.code} — {finding.message}"
+        )
 
 
 class Builder(Agent):
@@ -77,6 +88,7 @@ class Builder(Agent):
             files, deps, dropped = _parse_output(raw)
             state.generated_files = files
             state.extra_dependencies = deps
+            _record_ui_quality(state, files)
             for name in dropped:
                 state.warnings.append(f"builder: 依赖 {name} 不在白名单，已忽略")
             state.phase = ProjectPhase.BUILD_DONE
@@ -98,6 +110,7 @@ class Builder(Agent):
             files, deps, dropped = _parse_output(raw)
             state.generated_files = files
             state.extra_dependencies = {**state.extra_dependencies, **deps}  # 保留原有依赖
+            _record_ui_quality(state, files)
             for name in dropped:
                 state.warnings.append(f"builder.repair: 依赖 {name} 不在白名单，已忽略")
         except Exception as exc:  # noqa: BLE001
@@ -118,6 +131,7 @@ class Builder(Agent):
             files, deps, dropped = _parse_output(raw)
             state.generated_files = files
             state.extra_dependencies = {**state.extra_dependencies, **deps}
+            _record_ui_quality(state, files)
             for name in dropped:
                 state.warnings.append(f"builder.revise: 依赖 {name} 不在白名单，已忽略")
         except Exception as exc:  # noqa: BLE001

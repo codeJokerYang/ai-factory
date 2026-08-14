@@ -18,6 +18,16 @@ SCAFFOLD_FILES = [
     "app/layout.tsx",
 ]
 
+UI_QUALITY_CONTRACT = """UI 质量契约（UI 是交付物，不是装饰）:
+- 先根据产品与目标用户确定一个克制、明确的视觉方向；保持单一主色和稳定层级，避免无意义渐变、满屏同质卡片、过量圆角胶囊和模板化文案。
+- 移动优先：手机为单列，`sm/md/lg` 后再扩展网格或双栏；页面不能横向溢出，主操作在窄屏仍清晰可达。
+- 使用语义化 `header/nav/main/section/footer` 与唯一清晰 `h1`；重要内容按“任务目标 → 核心操作 → 状态/结果”组织。
+- 必须覆盖真实交互状态：默认、hover、focus-visible、disabled；异步操作还要有 loading、成功、失败，列表要有 empty state。反馈用 `aria-live` 或可感知的行内区域。
+- 表单控件必须有 `label`/aria-label，按钮目标至少约 44px；图片有 alt，纯装饰图用空 alt；不要用带 onClick 的 div/span 代替按钮。
+- 优先复用脚手架的 `.ui-shell`、`.ui-panel`、`.ui-kicker`、`.ui-title`、`.ui-copy`、`.ui-button-primary`、`.ui-button-secondary`、`.ui-field`、`.ui-status`；可按产品调色，但保持对比度和一致间距。
+- 内容要像真实产品：使用具体标题、动作与示例数据，不用 Lorem ipsum、“Feature 1”或空洞营销话术；图标使用轻量 inline SVG，不用 emoji 充当主要界面图标。
+- 复杂页面拆成少量职责明确的 components，不要把所有 UI 和状态塞进一个超大 page.tsx。"""
+
 SYSTEM = f"""{MARKER}
 你是软件工程师 Agent（Builder）。基于 Product Spec + Architecture，为一个**已脚手架好**的
 Next.js 14（App Router）+ TypeScript + Tailwind 项目生成**特性代码文件**。
@@ -35,6 +45,8 @@ Next.js 14（App Router）+ TypeScript + Tailwind 项目生成**特性代码文�
   - `@supabase/supabase-js`：接 Supabase，从 `process.env.NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` 读取；**env 缺失时降级为 localStorage/内存 mock**，保证本地无凭据也能 `npm run dev` 跑起来。
 - 不需要外部服务时，用内存 state / localStorage / mock 数据。
 - 实现 Spec 的 MVP 核心闭环；做不到真实算法就用合理的 mock（例如关键词重合度打分），并在 UI 标注「演示/mock」。
+
+{UI_QUALITY_CONTRACT}
 
 只输出一个 JSON 对象（不要解释、不要 markdown 代码块）:
 {{
