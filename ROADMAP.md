@@ -10,7 +10,7 @@
 | # | 任务 | 分支 | 状态 | 关联 Spec |
 |---|------|------|------|-----------|
 | 1 | v1 + B系列 + 粒度 + 保真度 + Reviewer(+自愈) + Security | `main` | ✅ 已并入 main，CI 绿 | `wiki/specs/*` |
-| 2 | 生成 UI 质量基线（设计令牌 + UI 契约 + 静态审计） | `feat/ui-quality-baseline` | PR #16 草稿；139 测试 + Next build + 桌面/移动视觉复验通过，CI 检查中 | `wiki/specs/004-generated-ui-quality-baseline.md` |
+| 2 | 生成 UI 质量基线（设计令牌 + UI 契约 + 静态审计） | `feat/ui-quality-baseline` | PR #16 草稿；139 测试 + Next build + 桌面/移动视觉复验通过，CI 绿 | `wiki/specs/004-generated-ui-quality-baseline.md` |
 
 ---
 
