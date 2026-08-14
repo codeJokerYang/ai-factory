@@ -1,7 +1,7 @@
 # Wiki 索引
 
 > 自动维护。AI 每次操作前先查这个文件确定文档位置。
-> 最后更新: 2026-08-14
+> 最后更新: 2026-08-15
 
 ---
 
@@ -13,6 +13,7 @@
 | [002](decisions/002-versioned-validated-knowledge-cases.md) | L3 使用版本化、质量门控制的案例 JSON | 2026-07-20 | 已采纳 |
 | [003](decisions/003-local-cache-metrics-jsonl.md) | 缓存指标使用本地版本化 JSONL | 2026-07-20 | 已采纳 |
 | [004](decisions/004-deterministic-ui-baseline.md) | 生成 UI 使用确定性视觉基线与 advisory 静态审计 | 2026-08-14 | 已采纳 |
+| [005](decisions/005-local-mock-web-console.md) | 本地控制台使用标准库 HTTP 边界与真实 Agent Mock 流水线 | 2026-08-15 | 已采纳 |
 
 ## 功能规格 (specs/)
 
@@ -22,6 +23,7 @@
 | [002](specs/002-cross-project-knowledge-cache.md) | L3 跨项目知识案例缓存 | 2026-07-20 | 已完成 |
 | [003](specs/003-cache-observability.md) | L2/L3 缓存可观测性 | 2026-07-20 | 已完成 |
 | [004](specs/004-generated-ui-quality-baseline.md) | 生成 UI 质量基线 | 2026-08-14 | 已完成 |
+| [005](specs/005-testable-web-console.md) | AI Factory 本地可测试控制台 | 2026-08-15 | 已完成 |
 
 ## 编码规范 (conventions/)
 
@@ -34,6 +36,7 @@
 - [knowledge-cache.md](runbooks/knowledge-cache.md)
 - [cache-observability.md](runbooks/cache-observability.md)
 - [ui-quality.md](runbooks/ui-quality.md)
+- [web-console.md](runbooks/web-console.md)
 - [pr-checklist.md](runbooks/pr-checklist.md)
 
 ## 跨项目知识 (knowledge/)

@@ -269,6 +269,19 @@ Builder 生成的 Next.js 应用现在自带一套轻量视觉底座：颜色令
 
 静态审计是 advisory；最终视觉、内容密度和品牌适配仍由 Gate 2 截图人工确认。
 
+### 本地可测试控制台
+
+仓库提供一个无需 API Key 的浏览器控制台，用于直接验证编排链，而不只是查看静态 UI：
+
+```bash
+python -m orchestration.web_console
+# 打开 http://127.0.0.1:3110
+```
+
+在控制台输入一句产品想法后，后端会用 `MockLLM` 执行真实的 Planner → Architect →
+Decomposer → Gate 1 → Builder → Reviewer → Security 代码路径。页面会展示阶段状态、产品规格、
+任务 DAG、生成文件与质量报告。Mock 运行不会读取 API Key，也不会把生成结果写入 `generated/`。
+
 ---
 
 ## 7. LangChain 编排层
@@ -316,6 +329,14 @@ Issue → 读代码库(Wiki+RAG) → Claude 实现 → Codex 测试 → Claude �
 ---
 
 ## 9. 快速开始
+
+### 0. 先体验本地控制台
+
+```bash
+python -m orchestration.web_console
+```
+
+浏览器访问 `http://127.0.0.1:3110`，选择示例或输入自己的产品想法，然后点击“运行完整流水线”。
 
 ### 1. 初始化项目
 
