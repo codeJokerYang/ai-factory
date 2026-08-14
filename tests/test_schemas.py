@@ -1,4 +1,13 @@
-from orchestration.schemas import Architecture, CacheLookup, Dag, DagNode, ProductSpec, Risk, UserStory
+from orchestration.schemas import (
+    Architecture,
+    CacheLookup,
+    Dag,
+    DagNode,
+    ProductSpec,
+    Risk,
+    UIQualityReport,
+    UserStory,
+)
 from orchestration.state import ProjectPhase, ProjectState
 
 
@@ -23,6 +32,7 @@ def test_project_state_roundtrip():
             context_chars=80,
             estimated_reused_tokens=20,
         ),
+        ui_quality=UIQualityReport(passed=True),
     )
 
     restored = ProjectState.model_validate_json(state.model_dump_json())
@@ -31,3 +41,4 @@ def test_project_state_roundtrip():
     assert restored.dag.nodes[0].risk == Risk.high
     assert restored.phase == ProjectPhase.INIT
     assert restored.cache_lookup.match_ids == ["auth"]
+    assert restored.ui_quality.passed is True

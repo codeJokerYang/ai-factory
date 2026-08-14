@@ -1,5 +1,5 @@
 from orchestration.gate2 import make_gate_2, summarize_build
-from orchestration.schemas import GeneratedFile, ProductSpec
+from orchestration.schemas import GeneratedFile, ProductSpec, UIQualityFinding, UIQualityReport
 from orchestration.state import ProjectPhase, ProjectState
 
 
@@ -15,11 +15,25 @@ def _state():
 
 
 def test_summarize_build():
-    out = summarize_build(_state())
+    state = _state()
+    state.ui_quality = UIQualityReport(
+        passed=False,
+        findings=[
+            UIQualityFinding(
+                severity="medium",
+                code="missing-responsive",
+                file="app/page.tsx",
+                message="缺少响应式断点",
+            )
+        ],
+    )
+    out = summarize_build(state)
     assert "demo" in out
     assert "app/page.tsx" in out
     assert "通过" in out  # build_passed True
     assert "http://localhost:3000" in out
+    assert "UI Quality" in out
+    assert "missing-responsive" in out
 
 
 def test_gate_2_approve():

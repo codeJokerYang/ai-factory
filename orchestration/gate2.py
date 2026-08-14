@@ -29,6 +29,13 @@ def summarize_build(state: ProjectState) -> str:
     for f in state.generated_files:
         n = len(f.content.splitlines())
         lines.append(f"  + {f.path} ({n} 行)")
+    ui = state.ui_quality
+    if ui is not None:
+        lines.append(f"UI Quality: {'✅ 基线通过' if ui.passed else '⚠️  需要人工复核'}")
+        for finding in ui.findings:
+            lines.append(
+                f"  [{finding.severity}] {finding.file}: {finding.code} — {finding.message}"
+            )
     cr = state.code_review
     if cr is not None:
         lines.append(f"Reviewer: {'✅ 通过' if cr.passed else '❌ 有阻塞问题'} — {cr.summary}")
