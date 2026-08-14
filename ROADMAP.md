@@ -11,7 +11,7 @@
 |---|------|------|------|-----------|
 | 1 | v1 + B系列 + 粒度 + 保真度 + Reviewer(+自愈) + Security | `main` | ✅ 已并入 main，CI 绿 | `wiki/specs/*` |
 | 2 | 生成 UI 质量基线（设计令牌 + UI 契约 + 静态审计） | `feat/ui-quality-baseline` | PR #16 草稿；139 测试 + Next build + 桌面/移动视觉复验通过，CI 绿 | `wiki/specs/004-generated-ui-quality-baseline.md` |
-| 3 | AI Factory 本地可测试控制台（真实 Agent + MockLLM + HTTP API） | `feat/ui-quality-baseline` | PR #16 草稿；150 测试 + 浏览器交互与布局复验通过，待 CI | `wiki/specs/005-testable-web-console.md` |
+| 3 | AI Factory 本地可测试控制台（真实 Agent + MockLLM + HTTP API） | `feat/ui-quality-baseline` | PR #16 草稿；150 测试 + 浏览器交互与布局复验通过，CI 绿 | `wiki/specs/005-testable-web-console.md` |
 
 ---
 
