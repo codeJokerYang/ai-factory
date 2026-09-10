@@ -1,5 +1,6 @@
 from orchestration.gate2 import make_gate_2, summarize_build
-from orchestration.schemas import GeneratedFile, ProductSpec
+from orchestration.schemas import GeneratedFile, ProductSpec, CodeReview, SecurityReport
+from orchestration.acceptance import AcceptanceReport
 from orchestration.state import ProjectPhase, ProjectState
 
 
@@ -10,6 +11,10 @@ def _state():
         product_spec=ProductSpec(project_name="demo", one_liner="o", target_users="u"),
         generated_files=[GeneratedFile(path="app/page.tsx", content="a\nb\nc")],
         build_passed=True,
+        preview_ready=True,
+        code_review=CodeReview(passed=True),
+        security_report=SecurityReport(),
+        acceptance_report=AcceptanceReport(original_request_satisfied=True, summary="ok"),
         preview_url="http://localhost:3000",
     )
 

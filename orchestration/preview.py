@@ -7,6 +7,9 @@ dev_server 是上下文管理器，进出即起停 `npm run dev`。screenshot �
 from __future__ import annotations
 
 import subprocess
+import os
+import signal
+import socket
 import time
 import urllib.request
 from contextlib import contextmanager
@@ -30,21 +33,34 @@ def wait_until_ready(url: str, timeout: int = 120, interval: float = 1.0) -> boo
 
 
 @contextmanager
-def dev_server(app_dir, port: int = 3000, ready_timeout: int = 120) -> Iterator[Tuple[str, bool]]:
+def dev_server(app_dir, port: int = 0, ready_timeout: int = 120) -> Iterator[Tuple[str, bool]]:
     """启动 `npm run dev -- -p <port>`，yield (url, ready)，退出时停服。"""
     app_dir = Path(app_dir)
-    url = f"http://localhost:{port}"
+    if port == 0:
+        with socket.socket() as sock:
+            sock.bind(('127.0.0.1', 0))
+            port = sock.getsockname()[1]
+    url = f"http://127.0.0.1:{port}"
     proc = subprocess.Popen(
-        _npm_args(["run", "dev", "--", "-p", str(port)]),
+        _npm_args(["run", "dev", "--", "-H", "127.0.0.1", "-p", str(port)]),
         cwd=str(app_dir),
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
+        start_new_session=os.name != 'nt',
+        creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
     )
     try:
-        ready = wait_until_ready(url, ready_timeout)
+        ready = wait_until_ready(url, ready_timeout) and proc.poll() is None
         yield url, ready
     finally:
-        proc.terminate()
+        if os.name == 'nt':
+            subprocess.run(['taskkill', '/PID', str(proc.pid), '/T', '/F'],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+        else:
+            try:
+                os.killpg(proc.pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
         try:
             proc.wait(timeout=10)
         except subprocess.TimeoutExpired:

@@ -25,7 +25,7 @@ class Decomposer(Agent):
         state.phase = ProjectPhase.DECOMPOSING
         spec_json = state.product_spec.model_dump_json(indent=2)
         arch_json = state.architecture.model_dump_json(indent=2)
-        raw = self.llm.complete(
+        raw = self.complete(state,
             model=self.model, system=SYSTEM, prompt=build_prompt(spec_json, arch_json)
         )
         try:

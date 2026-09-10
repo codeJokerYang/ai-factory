@@ -9,6 +9,7 @@ from abc import ABC, abstractmethod
 
 from ..llm import LLMClient
 from ..state import ProjectState
+from ..instructions import with_instructions
 
 
 class Agent(ABC):
@@ -16,7 +17,15 @@ class Agent(ABC):
     model: str
 
     def __init__(self, llm: LLMClient):
+        import os
         self.llm = llm
+        self.model = os.environ.get("FACTORY_MODEL") or os.environ.get(
+            f"FACTORY_{self.name.upper()}_MODEL", self.model
+        )
+
+    def complete(self, state, **kwargs):
+        kwargs["prompt"] = with_instructions(state, kwargs["prompt"])
+        return self.llm.complete(**kwargs)
 
     @abstractmethod
     def run(self, state: ProjectState) -> ProjectState: ...

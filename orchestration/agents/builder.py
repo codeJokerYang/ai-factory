@@ -25,6 +25,8 @@ def _parse_output(raw: str):
     """
     data = extract_json(raw)
     files = [GeneratedFile(**f) for f in data.get("files", [])]
+    from ..security import validate_feature_files
+    validate_feature_files(files)
     if not any(f.path.replace("\\", "/") == "app/page.tsx" for f in files):
         raise ValueError("未生成 app/page.tsx")
     deps, dropped = {}, []
@@ -67,7 +69,7 @@ class Builder(Agent):
             knowledge_matches=knowledge_matches,
             context=template_context or knowledge_context,
         )
-        raw = self.llm.complete(
+        raw = self.complete(state,
             model=self.model,
             system=SYSTEM,
             prompt=build_prompt(spec_json, arch_json, template_context, knowledge_context),
@@ -88,7 +90,7 @@ class Builder(Agent):
     def repair(self, state: ProjectState, error_log: str) -> ProjectState:
         """构建门失败后自愈：把编译器报错 + 当前文件回灌，生成修正后的完整文件集。"""
         current = [{"path": f.path, "content": f.content} for f in state.generated_files]
-        raw = self.llm.complete(
+        raw = self.complete(state,
             model=self.model,
             system=SYSTEM,
             prompt=repair_prompt(error_log, current),
@@ -108,7 +110,7 @@ class Builder(Agent):
     def revise(self, state: ProjectState, review_feedback: str) -> ProjectState:
         """按 Reviewer 审查意见修订代码（FR-2.5 veto → fix）。"""
         current = [{"path": f.path, "content": f.content} for f in state.generated_files]
-        raw = self.llm.complete(
+        raw = self.complete(state,
             model=self.model,
             system=SYSTEM,
             prompt=revise_prompt(review_feedback, current),

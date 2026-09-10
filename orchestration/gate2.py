@@ -59,6 +59,15 @@ def make_gate_2(approver: Optional[Approver] = None) -> Step:
     def gate_2(state: ProjectState) -> ProjectState:
         if state.phase == ProjectPhase.FAILED:
             return state
+        state.gate_2_approved = False
+        if (state.build_passed is not True or not state.preview_ready
+                or state.code_review is None or not state.code_review.passed
+                or state.security_report is None or not state.security_report.passed
+                or state.acceptance_report is None or not state.acceptance_report.passed
+                or state.errors):
+            state.errors.append("gate2: 构建、审查、安全、指令核对和预览必须全部通过")
+            state.phase = ProjectPhase.FAILED
+            return state
         state.phase = ProjectPhase.WAITING_GATE_2
         approved, feedback = approver(state)
         if approved:

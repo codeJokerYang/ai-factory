@@ -6,6 +6,7 @@ write_app() 把脚手架与特性文件合并写盘（特性文件可覆盖同�
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -147,15 +148,35 @@ def write_app(
     extra_deps: Optional[Dict[str, str]] = None,
 ) -> List[Path]:
     """写脚手架 + 特性文件到 target/。特性文件覆盖同名脚手架文件。"""
+    from .config import ALLOWED_EXTRA_DEPS
+    from .security import validate_feature_files
+    validate_feature_files(feature_files)
+    if any(ALLOWED_EXTRA_DEPS.get(k) != v for k, v in (extra_deps or {}).items()):
+        raise ValueError("依赖必须来自白名单并使用固定版本")
     files: Dict[str, str] = scaffold_files(project, extra_deps)
     for f in feature_files:
         files[f.path] = f.content
 
     # Validate every untrusted path before the first write to avoid partial output.
     resolved_files = [(resolve_within(target, rel), content) for rel, content in files.items()]
+    manifest = resolve_within(target, ".factory-generated.json")
+    previous = json.loads(manifest.read_text(encoding="utf-8")) if manifest.exists() else {}
+    stale = []
+    for rel, digest in previous.items():
+        if rel in files:
+            continue
+        old = resolve_within(target, rel)
+        if old.is_file():
+            if hashlib.sha256(old.read_bytes()).hexdigest() != digest:
+                raise ValueError(f"旧生成文件已被手动修改，不能移除: {rel}")
+            stale.append(old)
     written: List[Path] = []
     for p, content in resolved_files:
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(content, encoding="utf-8")
         written.append(p)
+    for old in stale:
+        old.unlink()
+    manifest.write_text(json.dumps({rel: hashlib.sha256(p.read_bytes()).hexdigest()
+                                   for rel, (p, _) in zip(files, resolved_files)}), encoding="utf-8")
     return written

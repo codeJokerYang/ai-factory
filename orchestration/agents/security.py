@@ -30,7 +30,7 @@ class SecurityAgent(Agent):
         if blocking:  # 仅高危时调 LLM（零 token 路径：无高危不调）
             high = [f for f in findings if f.severity in ("high", "critical")]
             try:
-                summary = self.llm.complete(
+                summary = self.complete(state,
                     model=self.model, system=SYSTEM, prompt=build_prompt(high, files)
                 ).strip()
             except Exception:  # noqa: BLE001 - LLM 失败不影响规则判定（veto 仍生效）

@@ -15,7 +15,7 @@ class Planner(Agent):
 
     def run(self, state: ProjectState) -> ProjectState:
         state.phase = ProjectPhase.PLANNING
-        raw = self.llm.complete(model=self.model, system=SYSTEM, prompt=build_prompt(state.idea))
+        raw = self.complete(state, model=self.model, system=SYSTEM, prompt=build_prompt(state.idea))
         try:
             state.product_spec = ProductSpec(**extract_json(raw))
         except Exception as exc:  # noqa: BLE001 - 记录并优雅失败

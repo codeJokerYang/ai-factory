@@ -1,3 +1,58 @@
+# AI Factory 网页工作台
+
+本地输入需求 → 方案审批 → 生成与修复 → 构建、审查、指令核对 → 人工预览验收。
+
+## 启动网页
+
+```powershell
+# 首次安装（Python 3.10+；构建生成应用还需要 Node.js/npm）
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+# 在本地 .env 或环境变量中配置 ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN。
+# 兼容网关可配置 ANTHROPIC_BASE_URL；用 FACTORY_MODEL 指定可用模型。
+.\.venv\Scripts\python.exe -m orchestration.web
+```
+
+打开 http://127.0.0.1:8765 。服务仅绑定本机，不用于公网托管。
+
+1. 在需求框描述产品，约束框每行填写一条必须满足的要求。
+2. 点击“开始执行”，检查方案后批准或拒绝。
+3. 系统执行生成、审查修订、安全扫描、构建修复、最终复审和指令核对。
+4. 全部检查通过后，在等待验收期间打开预览，确认后批准或拒绝。
+5. 网页可以查看和下载运行报告；本地完整报告保存在 `.factory/runs/<id>/report.json`。
+
+原始需求会传给每个 Agent，包括编译修复和审查修订。逐项要求使用 R1、R2 等稳定编号，代码证据无法验证、要求缺失或不确定时不允许验收。核对是模型辅助的代码检查，不代表业务测试通过。
+
+同一服务一次运行一个任务。审批最长等待 30 分钟；拒绝会结束本次运行，修改需求后重新提交。刷新页面可继续查看当前任务；服务重启后不自动恢复运行，可在本地读取报告。每次生成使用独立目录，避免覆盖其他项目。
+
+## 命令行
+
+```powershell
+.\.venv\Scripts\python.exe -m orchestration.build_cli "中文任务管理工具" --require "刷新后保留任务" --gate2
+.\.venv\Scripts\python.exe -m orchestration.build_cli --instructions-file wiki/specs/my-request.md --gate2
+# 仅生成（不会执行 npm，不会标记验收通过）
+.\.venv\Scripts\python.exe -m orchestration.build_cli "我的需求" --generate-only
+```
+
+默认必须人工批准方案。只有显式 `--approve-plan` 才自动批准；`--verify` 保留兼容，构建验证已默认开启。
+
+## 当前边界
+
+- 固定 Next.js 技术栈；DAG 当前用于规划，Builder 仍整项目生成，尚未实现按 DAG 增量执行。
+- npm 安装禁用生命周期脚本，生成文件不能覆盖 package.json、构建配置或隐藏文件；安全扫描在执行前运行。但生成代码仍在本机运行，尚无容器沙箱。
+- 不自动创建远程 PR、合并或部署；没有业务端到端测试与生产运维闭环。
+- 模型 API 及网关可用性需自行配置验证；网页不会收集或写入密钥。
+
+## 验证
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
+```
+
+下方为原始工作流设计参考；实际自动化能力和入口以上述说明为准。
+
+---
+
 # 一人公司 × AI 编程助手 工作流
 
 > **核心理念**: 你不是在写代码，你是在**指挥一个免费工程团队**。

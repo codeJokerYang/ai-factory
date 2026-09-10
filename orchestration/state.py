@@ -9,6 +9,7 @@ from enum import Enum
 from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
+from .acceptance import AcceptanceReport
 
 from .schemas import Architecture, CacheLookup, CodeReview, Dag, GeneratedFile, ProductSpec, SecurityReport
 
@@ -34,6 +35,9 @@ class ProjectPhase(str, Enum):
 class ProjectState(BaseModel):
     project_id: str
     idea: str
+    requirements: List[str] = Field(default_factory=list)
+    acceptance_report: Optional[AcceptanceReport] = None
+    preview_ready: bool = False
     phase: ProjectPhase = ProjectPhase.INIT
     product_spec: Optional[ProductSpec] = None
     architecture: Optional[Architecture] = None
