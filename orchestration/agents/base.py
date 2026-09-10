@@ -17,11 +17,9 @@ class Agent(ABC):
     model: str
 
     def __init__(self, llm: LLMClient):
-        import os
+        from .. import config
         self.llm = llm
-        self.model = os.environ.get("FACTORY_MODEL") or os.environ.get(
-            f"FACTORY_{self.name.upper()}_MODEL", self.model
-        )
+        self.model = config.get_model(self.name, self.model)
 
     def complete(self, state, **kwargs):
         kwargs["prompt"] = with_instructions(state, kwargs["prompt"])

@@ -29,7 +29,12 @@ class AnthropicLLM:
         kwargs["timeout"] = config.LLM_TIMEOUT_SECONDS
         # Bearer token（Anthropic 兼容网关，如 GLM）优先；否则用 x-api-key。
         auth_token = os.environ.get(config.AUTH_TOKEN_ENV)
-        if auth_token and not api_key:
+        if config.get_provider() == "deepseek" and not api_key:
+            key = config.get_api_key()
+            if not key:
+                raise ValueError("未配置 DEEPSEEK_API_KEY")
+            kwargs["api_key"] = key
+        elif auth_token and not api_key:
             kwargs["auth_token"] = auth_token
         else:
             kwargs["api_key"] = api_key or os.environ.get(config.API_KEY_ENV)

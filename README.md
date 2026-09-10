@@ -15,6 +15,13 @@ python -m venv .venv
 
 打开 http://127.0.0.1:8765 。服务仅绑定本机，不用于公网托管。
 
+### 使用本地 DeepSeek 凭据
+
+已有 `DEEPSEEK_API_KEY` 环境变量且未配置 Anthropic 凭据时，工作台自动选择 DeepSeek，默认模型 `deepseek-chat`，无需把密钥复制到项目文件。存在多家凭据时，在启动前设置 `$env:FACTORY_PROVIDER = "deepseek"`。可以用 `DEEPSEEK_MODEL` 或 `FACTORY_MODEL` 覆盖模型。
+
+DeepSeek 模式只把该密钥发到官方 Anthropic 兼容接口 `https://api.deepseek.com/anthropic`，不会沿用环境中其他 `ANTHROPIC_BASE_URL` 网关。参见 [DeepSeek 官方接口说明](https://api-docs.deepseek.com/guides/anthropic_api/)。
+
+
 1. 在需求框描述产品，约束框每行填写一条必须满足的要求。
 2. 点击“开始执行”，检查方案后批准或拒绝。
 3. 系统执行生成、审查修订、安全扫描、构建修复、最终复审和指令核对。

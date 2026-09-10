@@ -9,3 +9,7 @@
 报告包含用户需求和生成源码，默认只在 `.factory/` 本地保存，不要未经检查公开。浏览器页面刷新可以继续查询当前任务；Python 服务重启后只保留磁盘报告，不会恢复执行。
 
 GitHub 网络不可用不影响本地网页开发；远程发布需在网络恢复后从升级分支创建 PR。
+
+## DeepSeek 本地环境
+
+检测到 `DEEPSEEK_API_KEY` 且没有 Anthropic 凭据时自动使用 DeepSeek。多凭据环境使用 `FACTORY_PROVIDER=deepseek` 明确选择。默认 `deepseek-chat`，可用 `DEEPSEEK_MODEL` 覆盖。凭据只从进程环境或本地 dotenv 读取，不写入报告或代码。切换后需重启网页服务。
