@@ -13,3 +13,7 @@ GitHub 网络不可用不影响本地网页开发；远程发布需在网络恢�
 ## DeepSeek 本地环境
 
 检测到 `DEEPSEEK_API_KEY` 且没有 Anthropic 凭据时自动使用 DeepSeek。多凭据环境使用 `FACTORY_PROVIDER=deepseek` 明确选择。默认 `deepseek-chat`，可用 `DEEPSEEK_MODEL` 覆盖。凭据只从进程环境或本地 dotenv 读取，不写入报告或代码。切换后需重启网页服务。
+
+## 方案确认界面
+
+默认展示产品摘要、用户要求、核心功能和本次范围。使用场景、成功标准、风险、实施计划与技术方案按需展开。完整 JSON 仍可在“完整运行报告”查看和下载；轮询不会重置已展开的详情。

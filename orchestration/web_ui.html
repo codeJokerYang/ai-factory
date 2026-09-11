@@ -2,6 +2,8 @@
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AI Factory · 工作台</title>
 <style>
 :root{font-family:system-ui,"Microsoft YaHei",sans-serif;color:#e4e9f5;background:#0e1421}*{box-sizing:border-box}body{margin:0}main{max-width:1180px;margin:auto;padding:40px 24px}header{display:flex;justify-content:space-between;align-items:center;margin-bottom:32px}h1{font-size:28px;margin:0}h2{font-size:18px;margin:0 0 20px}.muted{color:#a3b2cc;font-size:14px;line-height:1.7}.badge{color:#7bdbbc;border:1px solid #345b51;padding:6px 12px;border-radius:20px;font-size:12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}.card{background:#171f30;border:1px solid #2b374d;border-radius:16px;padding:24px}label{display:block;margin:20px 0 8px;font-size:14px}textarea{width:100%;resize:vertical;border-radius:9px;border:1px solid #3c4960;background:#0e1523;color:#eef3ff;padding:14px;font:inherit;line-height:1.6}textarea:focus{outline:2px solid #78a4ff}button{background:#a9c5ff;border:0;color:#142343;padding:12px 18px;border-radius:8px;font-weight:650;cursor:pointer;margin:16px 8px 0 0}button.secondary{background:#303d56;color:#edf2ff}button:disabled{opacity:.5;cursor:wait}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.7;max-height:350px;overflow:auto}.status{font-size:22px;color:#a9c5ff;margin:16px 0}.error{color:#ffb5b5;white-space:pre-wrap}#approval{border-top:1px solid #3c4960;margin-top:20px;padding-top:20px}#checks{padding:0;list-style:none}#checks li{padding:12px 0;border-bottom:1px solid #303b4d;white-space:pre-wrap}a{color:#a9c5ff}details{margin-top:20px}summary{cursor:pointer}@media(max-width:800px){.grid{grid-template-columns:1fr}main{padding:24px 16px}}
+
+.plan-section{margin:20px 0;line-height:1.7;overflow-wrap:anywhere}.plan-section h3{font-size:15px;color:#a9c5ff;margin:0 0 8px}.plan-section p{margin:6px 0;white-space:pre-wrap}.plan-section ul{padding-left:20px;margin:8px 0}.plan-section li{margin:6px 0}.plan-task{padding:12px 0;border-bottom:1px solid #303b4d}.plan-task small{display:block;color:#a3b2cc;margin-top:5px}.plan-meta{display:grid;grid-template-columns:90px 1fr;gap:8px;margin:0}.plan-meta dt{color:#a3b2cc}.plan-meta dd{margin:0}.plan-intro{border-left:3px solid #7bdbbc;padding-left:14px}
 </style></head><body><main>
 <header><div><h1>AI Factory</h1><div class="muted">把需求变成可核对的实现</div></div><span class="badge">本地工作台</span></header>
 <div class="grid"><section class="card"><h2>今天要做什么？</h2><p class="muted">描述目标、功能和约束。原始指令会贯穿方案、生成、修复和最终核对。当前支持 Next.js 应用。</p>
@@ -9,14 +11,53 @@
 <label for="requirements">必须满足的要求 · 每行一条</label><textarea id="requirements" rows="4" placeholder="全部界面使用中文&#10;刷新页面后保留任务&#10;不使用模拟数据冒充持久化"></textarea>
 <p class="muted">模型凭据请在本地 .env 配置，勿填入此处。构建会安装依赖并在本机运行生成代码；当前尚无容器隔离。</p><button id="start" type="submit">开始执行 →</button></form><div id="error" class="error" role="alert"></div></section>
 <section class="card"><h2>执行与验收</h2><div id="status" class="status" aria-live="polite">等待你的第一条指令</div><pre id="logs">提交后，这里会展示实际执行进度。</pre>
-<div id="approval" hidden><h2 id="approvalTitle"></h2><pre id="plan"></pre><p><a id="preview" target="_blank" rel="noopener" hidden>打开应用预览 ↗</a></p><label for="feedback">审批反馈</label><textarea id="feedback" rows="2" placeholder="可填写拒绝原因"></textarea><button id="approve">批准并继续</button><button id="reject" class="secondary">拒绝</button></div>
+<div id="approval" hidden><h2 id="approvalTitle"></h2><div id="plan"></div><p><a id="preview" target="_blank" rel="noopener" hidden>打开应用预览 ↗</a></p><label for="feedback">审批反馈</label><textarea id="feedback" rows="2" placeholder="可填写拒绝原因"></textarea><button id="approve">批准并继续</button><button id="reject" class="secondary">拒绝</button></div>
 <h2 style="margin-top:28px">指令核对</h2><p class="muted">代码证据核对由模型辅助完成，不等同于业务测试或上线认证。缺失或不确定项会阻止验收。</p><div id="summary"></div><ul id="checks"></ul><details><summary>完整运行报告</summary><pre id="report"></pre><button id="download" class="secondary">下载报告 JSON</button></details></section></div></main>
 <script>
 const token='__TOKEN__';let job=null,timer=null,last=null,waiting=null;
 const $=id=>document.getElementById(id);
 async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',headers:{'X-Factory-Token':token,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});const d=await r.json();if(!r.ok)throw Error(d.error||'请求失败');return d}
+// Render model output as text nodes: never interpret generated HTML.
+let approvalKey='';
+function node(tag,text,cls){const el=document.createElement(tag);if(text!=null)el.textContent=String(text);if(cls)el.className=cls;return el}
+function renderApproval(state,stage){
+ const key=JSON.stringify([stage,state.product_spec,state.architecture,state.dag,state.requirements,state.acceptance_report]);
+ if(key===approvalKey)return;approvalKey=key;
+ const root=$('plan');root.replaceChildren();
+ function section(title){const box=node('section',null,'plan-section');box.appendChild(node('h3',title));root.appendChild(box);return box}
+ function list(title,items,collapsed=false){if(!Array.isArray(items)||!items.length)return;let box;if(collapsed){box=node('details',null,'plan-section');box.appendChild(node('summary',title+' · '+items.length+' 项'));root.appendChild(box)}else box=section(title);const ul=node('ul');for(const item of items)ul.appendChild(node('li',item));box.appendChild(ul)}
+ if(stage!=='plan'){
+  section('验收摘要').appendChild(node('p',state.acceptance_report?.summary||'请打开预览，检查实际操作是否符合你的需求。'));
+  section('请重点确认').appendChild(node('p','页面内容、关键操作和数据保存是否符合预期。批准后本次预览服务会停止。'));
+  return;
+ }
+ const spec=state.product_spec||{},arch=state.architecture||{};
+ const intro=section('要做的产品');intro.classList.add('plan-intro');
+ intro.appendChild(node('strong',spec.project_name||'未命名项目'));
+ intro.appendChild(node('p',spec.one_liner||'尚未提供产品说明'));
+ if(spec.target_users)intro.appendChild(node('p','面向用户：'+spec.target_users,'muted'));
+ list('你的必须满足项',state.requirements);
+ list('核心功能',spec.core_features);
+ list('本次会做',spec.mvp_in_scope);
+ list('本次暂不做 · 请确认是否符合预期',spec.mvp_out_of_scope);
+ list('使用场景',(spec.user_stories||[]).map(x=>'作为'+x.as_a+'，希望'+x.i_want+'，以便'+x.so_that+'。'),true);
+ list('成功标准',spec.success_metrics,true);
+ list('需要留意的问题',spec.risks,true);
+ const tasks=state.dag?.nodes||[];
+ if(tasks.length){const box=node('details',null,'plan-section');box.appendChild(node('summary','查看实施计划 · '+tasks.length+' 项任务'));root.appendChild(box);
+ tasks.forEach((task,i)=>{const row=node('div',null,'plan-task');row.appendChild(node('strong',(i+1)+'. '+(task.done_criteria||task.id)));const risk={low:'低',medium:'中',high:'高'}[task.risk]||'待评估';row.appendChild(node('small','风险：'+risk+' · 预估工作量：'+task.est_minutes+' 分钟（模型估计，非实际等待时间）'));box.appendChild(row)});
+ }
+ const detail=node('details');detail.appendChild(node('summary','查看技术方案'));const technical=node('div',null,'plan-section');detail.appendChild(technical);
+ const names={frontend:'界面',styling:'样式',backend:'后端',database:'数据存储',auth:'用户认证',deploy:'部署方式'};
+ const dl=node('dl',null,'plan-meta');for(const [k,v] of Object.entries(arch.stack||{})){dl.appendChild(node('dt',names[k]||k));dl.appendChild(node('dd',v))}technical.appendChild(dl);
+ if(arch.data_model){technical.appendChild(node('h3','数据设计'));technical.appendChild(node('p',arch.data_model))}
+ for(const adr of arch.adrs||[]){technical.appendChild(node('strong',adr.title));technical.appendChild(node('p',adr.decision));technical.appendChild(node('p',adr.rationale,'muted'))}
+ if(arch.api_design?.length){technical.appendChild(node('h3','接口计划'));for(const api of arch.api_design)technical.appendChild(node('p',api.method+' '+api.path+' — '+api.purpose))}
+ root.appendChild(detail);
+ section('批准前请确认').appendChild(node('p','功能范围是否完整？“本次暂不做”是否遗漏了必要功能？确认后将开始生成代码。若方案不符，请填写反馈并拒绝。','muted'));
+}
 async function poll(){try{const d=await api('/api/jobs/'+job);last=d;waiting=d.waiting;const s=d.state;$('status').textContent=d.done?(s.phase==='failed'?'执行未通过':s.phase.endsWith('rejected')?'已拒绝':s.gate_2_approved?'人工验收通过':'任务结束'):d.waiting?'等待你的审批':'正在执行';$('logs').textContent=d.logs.join('\n');$('error').textContent=s.errors.join('\n');$('report').textContent=JSON.stringify(s,null,2);$('approval').hidden=!d.waiting;$('start').disabled=!d.done;$('approve').disabled=false;$('reject').disabled=false;
-if(d.waiting){$('approvalTitle').textContent=d.waiting==='plan'?'确认需求与方案':'确认应用预览';$('plan').textContent=JSON.stringify(d.waiting==='plan'?{需求:s.product_spec,方案:s.architecture,任务:s.dag}:s.acceptance_report,null,2);$('preview').hidden=d.waiting!=='preview';if(d.waiting==='preview')$('preview').href=s.preview_url}
+if(d.waiting){$('approvalTitle').textContent=d.waiting==='plan'?'确认需求与方案':'确认应用预览';renderApproval(s,d.waiting);$('preview').hidden=d.waiting!=='preview';if(d.waiting==='preview')$('preview').href=s.preview_url}
 const a=s.acceptance_report;$('summary').textContent=a?a.summary:'';$('checks').replaceChildren();if(a)for(const c of a.checks){const li=document.createElement('li');li.textContent=c.id+' · '+({implemented:'已找到代码证据',missing:'缺失',uncertain:'待确认'}[c.status])+'\n'+c.reason+'\n'+c.file+(c.evidence?'\n'+c.evidence:'');$('checks').appendChild(li)}if(d.done){clearInterval(timer);sessionStorage.removeItem('factoryJob')}}catch(e){$('error').textContent=e.message;clearInterval(timer);$('start').disabled=false}}
 $('request').onsubmit=async e=>{e.preventDefault();$('start').disabled=true;$('error').textContent='';try{const d=await api('/api/jobs',{idea:$('idea').value,requirements:$('requirements').value.split('\n').map(s=>s.trim()).filter(Boolean)});job=d.id;sessionStorage.setItem('factoryJob',job);clearInterval(timer);await poll();timer=setInterval(poll,1500)}catch(e){$('error').textContent=e.message;$('start').disabled=false}};
 async function decide(approved){$('approve').disabled=true;$('reject').disabled=true;try{await api('/api/jobs/'+job+'/decision',{stage:waiting,approved,feedback:$('feedback').value});$('feedback').value='';await poll()}catch(e){$('error').textContent=e.message}}
