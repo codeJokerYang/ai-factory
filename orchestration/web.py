@@ -102,7 +102,7 @@ def make_server(port=8765, jobs=None):
             pass
 
         def reply(self, status, data, mime='application/json; charset=utf-8'):
-            raw = data.encode('utf-8') if isinstance(data, str) else json.dumps(data, ensure_ascii=False).encode('utf-8')
+            raw = data if isinstance(data, bytes) else data.encode('utf-8') if isinstance(data, str) else json.dumps(data, ensure_ascii=False).encode('utf-8')
             self.send_response(status)
             self.send_header('Content-Type', mime)
             self.send_header('Content-Length', str(len(raw)))
@@ -123,6 +123,10 @@ def make_server(port=8765, jobs=None):
             if self.path == '/':
                 html = Path(__file__).with_name('web_ui.html').read_text(encoding='utf-8').replace('__TOKEN__', token)
                 return self.reply(200, html, 'text/html; charset=utf-8')
+            # Public artwork only: never turn this into arbitrary filesystem serving.
+            if self.path == '/assets/glacier.png':
+                asset = Path(__file__).with_name('assets') / 'glacier.png'
+                return self.reply(200, asset.read_bytes(), 'image/png')
             if self.headers.get('X-Factory-Token') != token:
                 return self.reply(403, {'error': '会话无效，请刷新页面'})
             if self.path.startswith('/api/jobs/'):

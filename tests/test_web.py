@@ -90,3 +90,28 @@ def test_model_setup_failure_is_visible():
     ident=jobs.start('x',[])
     wait_until(lambda:jobs.snapshot(ident)['done'])
     assert jobs.snapshot(ident)['state']['errors']==['模型不可用']
+
+
+def test_public_artwork_is_allowlisted_and_local_only():
+    srv = make_server(0)
+    thread = threading.Thread(target=srv.serve_forever, daemon=True)
+    thread.start()
+    base = f'http://127.0.0.1:{srv.server_port}'
+    try:
+        with urlopen(base + '/assets/glacier.png') as response:
+            assert response.headers['Content-Type'] == 'image/png'
+            assert response.headers['X-Content-Type-Options'] == 'nosniff'
+            assert response.read(8) == b'\x89PNG\r\n\x1a\n'
+        for path, headers in [
+            ('/assets/../web.py', {}),
+            ('/assets/%2e%2e/.env', {}),
+            ('/assets/unknown.png', {}),
+            ('/assets/glacier.png', {'Host': 'attacker.example'}),
+        ]:
+            with pytest.raises(HTTPError) as exc:
+                urlopen(Request(base + path, headers=headers))
+            assert exc.value.code == 403
+    finally:
+        srv.shutdown()
+        srv.server_close()
+        thread.join(2)
