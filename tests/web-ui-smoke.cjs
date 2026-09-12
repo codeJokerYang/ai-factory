@@ -47,10 +47,15 @@ const output = path.resolve('.factory/visual-review');
     });
     await page.goto(base, {waitUntil: 'networkidle'});
     await page.waitForTimeout(1800);
-    for (const [width, height] of [[1440, 960], [1024, 900], [768, 1024], [390, 844]]) {
+    // Include wide/short windows and CSS viewport sizes typical of browser zoom.
+    for (const [width, height] of [[2558,1358],[2048,1086],[1920,900],[1536,720],[1366,650],[1280,720],[1024,600],[853,480],[1440,960],[768,1024],[390,844]]) {
       await page.setViewportSize({width, height});
       await page.evaluate(() => scrollTo(0, 0));
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${width}px overflow`);
+      assert(await page.evaluate(() => {
+        const word=document.querySelector('.display-word').getBoundingClientRect();
+        return ['.hero-copy','.hero-about'].every(selector=>document.querySelector(selector).getBoundingClientRect().top > word.bottom+12);
+      }), `${width}x${height}: hero word overlaps captions`);
       assert(await page.evaluate(() => [...document.images].every(image => image.complete && image.naturalWidth > 0)), 'missing artwork');
       await page.screenshot({path: path.join(output, `page-${width}.png`), fullPage: true});
     }
@@ -146,6 +151,6 @@ const output = path.resolve('.factory/visual-review');
     const report = JSON.parse(fs.readFileSync(await download.path(), 'utf8'));
     assert.equal(report.phase, 'plan_rejected');
     assert.equal(errorCount, 0, `Unexpected browser errors: ${errors.slice(0, errorCount)}`);
-    console.log('PASS: 4 responsive sizes, crystal cursor, sculpture click/drag/keyboard, manual open/Escape/focus, touch, reduced motion, original instructions, readable approval, inert model text, decision retry, report download.');
+    console.log('PASS: 11 responsive sizes with caption separation, crystal cursor, sculpture click/drag/keyboard, manual open/Escape/focus, touch, reduced motion, original instructions, readable approval, inert model text, decision retry, report download.');
   } finally {await browser.close();}
 })().catch(error => {console.error(error); process.exitCode = 1;});

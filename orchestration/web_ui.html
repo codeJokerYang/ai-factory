@@ -47,6 +47,23 @@
 </style>
 <style>.material-index{display:none}.tour-controls{display:flex;justify-content:space-between;gap:10px;margin-top:12px}.tour-controls button{min-height:44px;padding:8px 0;border:0;border-bottom:1px solid transparent;background:none;color:var(--muted);font-size:11px}.tour-controls button[aria-pressed=true]{color:var(--ink);border-bottom-color:var(--ink)}.tour-content{min-height:130px}.tour-content.changed{animation:copy-enter .45s var(--ease)}.hero-about h2{margin-top:16px}.hero-about{bottom:122px}@media(max-width:600px){.hero{min-height:1120px}.hero-copy{top:44%}.hero-about{bottom:105px}.tour-content{min-height:110px}.hero-about h2{margin-top:12px}}
 </style>
+
+<style>
+/* Reserve real layout space for the artwork and both captions. */
+.hero-visual,.hero-caption-row{display:contents}
+@media(min-width:801px){
+ .hero{display:grid;grid-template-rows:auto minmax(300px,1fr) auto auto;height:auto;min-height:100svh;max-height:none}
+ .hero-visual{display:block;position:relative;min-height:clamp(300px,43svh,560px)}
+ .display-word{top:30%;font-size:min(20.1vw,28svh,340px)}
+ .art-parallax{top:50%;width:min(48vw,50svh,640px)}
+ .hero-caption-row{display:flex;position:relative;justify-content:space-between;align-items:flex-start;gap:64px;padding:24px var(--gutter) 16px;z-index:4}
+ .hero-copy,.hero-about{position:static;top:auto;bottom:auto;left:auto;right:auto;margin:0;min-width:0}
+ .hero-copy{flex:0 1 360px}.hero-about{flex:0 1 300px;width:300px}
+ .hero-copy h1{font-size:clamp(28px,2.1vw,38px)}
+ .hero-bottom{position:static;left:auto;right:auto;bottom:auto;padding:16px var(--gutter) 24px}
+ .hero-kicker,.edition{top:115px;font-size:9px}
+}
+</style>
 </head>
 <body>
 <div class="cursor-aura" aria-hidden="true"><svg class="cursor-crystal" viewBox="0 0 26 36" fill="none"><path d="M4 1 23 12 17 30 8 35 1 17Z" fill="#d9eff8" stroke="#4d7189" stroke-width=".7"/><path d="m4 1 7 16 12-5M11 17 8 35m3-18 6 13M1 17h10" stroke="white" stroke-width="1.2"/><path d="m4 1 7 16L1 17Z" fill="white"/><path d="m11 17 12-5-6 18Z" fill="#789db3" fill-opacity=".75"/></svg><span class="cursor-label"></span></div>
@@ -60,6 +77,7 @@
   </div>
   <p class="hero-kicker micro">AN INDEPENDENT CREATION SPACE<br>一个人的创作空间</p>
   <p class="edition micro">IDEA → REALITY<br>VOL. 001 / 2026</p>
+  <div class="hero-visual">
   <div class="display-word" aria-hidden="true">FACTORY</div>
   <div class="art-parallax"><div class="art-enter" aria-hidden="true">
     <figure class="scene active"><img src="/assets/glacier.png" width="1280" height="1280" fetchpriority="high" alt=""></figure>
@@ -68,6 +86,8 @@
     <figure class="scene scene--detail"><img src="/assets/glacier.png" width="1280" height="1280" alt=""></figure>
   </div><button class="art-control" type="button" aria-label="探索冰质雕塑：点击或左右拖动切换视角，也可用左右方向键" data-cursor="探索 ↔"></button></div>
   <span class="material-index micro" id="material-label" aria-live="polite">01 — GLACIER / 冰川原形</span>
+  </div>
+  <div class="hero-caption-row">
   <div class="hero-copy"><h1>一个人的<br>AI 创作工作台。</h1><p>你描述需求，AI 推进方案与实现。<br>关键审批和最终验收，由你掌握。</p><a class="text-link" href="#workspace">开始创作 <span class="arrow" aria-hidden="true">↗</span></a></div>
   <section class="hero-about" aria-label="创作步骤介绍">
     <span class="micro">HOW IT WORKS / 点击雕塑，了解下一步</span>
@@ -75,6 +95,7 @@
     <div class="tour-content" aria-live="polite" aria-atomic="true"><h2 id="tour-title">从你的原话开始。</h2><p id="tour-copy">在需求框写下目标，把不能妥协的要求逐行列出。原始指令会贯穿生成、修复和核对。</p></div>
     <button class="text-link manual-trigger" id="open-manual" type="button" aria-haspopup="dialog" aria-controls="system-manual" data-cursor="阅读">完整使用说明 <span aria-hidden="true">↗</span></button>
   </section>
+  </div>
   <div class="hero-bottom">
     <a class="scroll-note" href="#workspace"><span>SCROLL TO CREATE<br>向下，开始构建</span><span aria-hidden="true">↓</span></a>
     <span class="hero-bottom-note">LOCAL FIRST / 由你发起，由你验收</span>
