@@ -32,18 +32,16 @@
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{animation:none!important;transition:none!important}.art-parallax{transform:none!important}}
 </style>
 <style>
-/* A faceted ice cursor, with a native-pointer fallback until a pointer moves. */
-.cursor-aura{position:fixed;left:0;top:0;z-index:100;pointer-events:none;opacity:0;transition:opacity .15s;filter:drop-shadow(0 0 5px #fff) drop-shadow(0 0 2px #203f56)}
-.cursor-aura.visible{opacity:1}.cursor-crystal{display:block;width:25px;height:34px;translate:-4px -3px;transform:rotate(-15deg);transition:transform .22s,filter .22s}.cursor-aura.engaged .cursor-crystal{transform:rotate(18deg) scale(1.3);filter:drop-shadow(0 0 6px #c8eeff)}
-.cursor-aura:before,.cursor-aura:after{content:'';position:absolute;left:3px;top:23px;width:4px;height:17px;background:linear-gradient(#deefffff,transparent);clip-path:polygon(50% 0,100% 38%,50% 100%,0 40%);rotate:22deg;opacity:.55}.cursor-aura:after{left:-3px;top:37px;height:10px;opacity:.3}.cursor-label{position:absolute;left:29px;top:23px;color:#1b303b;background:#edf3f5e8;font-size:10px;white-space:nowrap;padding:3px 6px;opacity:0}.cursor-aura.engaged .cursor-label{opacity:1}
-@media(hover:hover) and (pointer:fine){html.crystal-pointer,html.crystal-pointer *{cursor:none!important}}
+/* Precise pointer tip with a restrained, finite particle trail. */
+.cursor-aura{position:fixed;left:0;top:0;z-index:100;pointer-events:none;opacity:0}.cursor-aura.visible{opacity:1}.cursor-arrow{display:block;width:18px;height:24px;filter:drop-shadow(0 1px 1px #25415466);transition:filter .18s}.cursor-aura.engaged .cursor-arrow{filter:drop-shadow(0 0 3px #b5e4f7)}.pointer-particles{position:fixed;inset:0;pointer-events:none;z-index:99;width:100vw;height:100vh}
+@media(hover:hover) and (pointer:fine){html.custom-pointer,html.custom-pointer *{cursor:none!important}}
 .art-control{position:absolute;inset:5% 8%;z-index:3;background:transparent;border:0;pointer-events:auto;touch-action:pan-y}.art-control:focus-visible{outline:1px dashed #536670;outline-offset:8px}
 .hero-about{position:absolute;right:var(--gutter);bottom:142px;z-index:6;width:280px}.hero-about .micro{color:var(--muted);font-size:9px}.hero-about h2{font-size:20px;font-weight:500;line-height:1.6;letter-spacing:-.5px;margin:12px 0}.hero-about p{font-size:12px;line-height:1.9;color:var(--muted);margin:0}.manual-trigger{background:none;border:0;border-bottom:1px solid var(--ink);margin-top:16px;cursor:pointer}.hero-copy{max-width:360px}.hero-copy p{max-width:320px}.hero-bottom-note{font-size:9px;letter-spacing:.12em;color:var(--muted)}
-.system-manual{width:min(850px,calc(100% - 40px));max-height:calc(100svh - 48px);border:0;border-radius:0;padding:36px 44px;background:#f0f3f4;color:var(--ink);overflow:auto;overscroll-behavior:contain}.system-manual::backdrop{background:#101b237a;backdrop-filter:blur(10px)}.manual-head{position:sticky;top:0;background:#f0f3f4;z-index:2;display:flex;justify-content:space-between;align-items:center;gap:20px}.manual-head span{color:var(--muted);font-size:10px;letter-spacing:.13em}.manual-close{background:none;border:0;font-size:13px;min-width:60px;min-height:44px}.system-manual>h2{font-size:34px;font-weight:500;letter-spacing:-1px;margin:25px 0 15px}.manual-intro{font-size:13px;line-height:1.9;color:var(--muted);max-width:630px;margin-bottom:24px}.manual-chapters summary{font-size:15px;padding:4px 0}.manual-chapters p{font-size:13px;line-height:1.95;margin:10px 0;color:#455862}.manual-chapters strong{color:var(--ink);font-weight:500}.manual-start{margin-top:25px}.manual-footnote{font-size:11px;color:var(--muted);line-height:1.8;margin-top:18px}
+.system-manual{width:min(850px,calc(100% - 40px));max-height:calc(100svh - 48px);border:0;border-radius:0;padding:36px 44px;background:#f0f3f4;color:var(--ink);overflow:hidden;overscroll-behavior:contain}.system-manual::backdrop{background:#101b237a;backdrop-filter:blur(10px)}.manual-head{position:relative;display:flex;justify-content:space-between;align-items:center;gap:20px}.manual-head span{color:var(--muted);font-size:10px;letter-spacing:.13em}.manual-close{background:none;border:0;font-size:13px;min-width:60px;min-height:44px}.manual-body>h2{font-size:34px;font-weight:500;letter-spacing:-1px;margin:25px 0 15px}.manual-intro{font-size:13px;line-height:1.9;color:var(--muted);max-width:630px;margin-bottom:24px}.manual-chapters summary{font-size:15px;padding:4px 0}.manual-chapters p{font-size:13px;line-height:1.95;margin:10px 0;color:#455862}.manual-chapters strong{color:var(--ink);font-weight:500}.manual-start{margin-top:25px}.manual-footnote{font-size:11px;color:var(--muted);line-height:1.8;margin-top:18px}
 @media(max-width:1050px){.hero-about{width:240px;bottom:125px}.hero-copy{max-width:285px}}
-@media(max-width:600px){.hero{height:auto;min-height:1030px;max-height:none}.art-parallax{top:29%;width:88vw}.display-word{top:22%}.material-index{display:none}.hero-copy{top:49%;bottom:auto;max-width:340px}.hero-copy h1{font-size:30px}.hero-about{left:var(--gutter);right:var(--gutter);bottom:104px;width:auto;max-width:360px}.hero-about h2{font-size:18px;margin:8px 0}.hero-about p{font-size:12px}.hero-bottom-note{font-size:8px;max-width:170px;text-align:right;line-height:1.8}.system-manual{width:calc(100% - 24px);max-height:calc(100svh - 24px);padding:22px}.system-manual>h2{font-size:27px}.manual-chapters summary{font-size:14px}}
-@media(hover:none),(pointer:coarse){.cursor-aura{display:none!important}}
-@media(prefers-reduced-motion:reduce){.cursor-aura:before,.cursor-aura:after{display:none}.cursor-crystal{transition:none;transform:none!important}}
+@media(max-width:600px){.hero{height:auto;min-height:1030px;max-height:none}.art-parallax{top:29%;width:88vw}.display-word{top:22%}.material-index{display:none}.hero-copy{top:49%;bottom:auto;max-width:340px}.hero-copy h1{font-size:30px}.hero-about{left:var(--gutter);right:var(--gutter);bottom:104px;width:auto;max-width:360px}.hero-about h2{font-size:18px;margin:8px 0}.hero-about p{font-size:12px}.hero-bottom-note{font-size:8px;max-width:170px;text-align:right;line-height:1.8}.system-manual{width:calc(100% - 24px);max-height:calc(100svh - 24px);padding:22px}.manual-body>h2{font-size:27px}.manual-chapters summary{font-size:14px}}
+@media(hover:none),(pointer:coarse){.cursor-aura,.pointer-particles{display:none!important}}
+@media(prefers-reduced-motion:reduce){.pointer-particles{display:none!important}.cursor-arrow{transition:none}}
 </style>
 <style>.material-index{display:none}.tour-controls{display:flex;justify-content:space-between;gap:10px;margin-top:12px}.tour-controls button{min-height:44px;padding:8px 0;border:0;border-bottom:1px solid transparent;background:none;color:var(--muted);font-size:11px}.tour-controls button[aria-pressed=true]{color:var(--ink);border-bottom-color:var(--ink)}.tour-content{min-height:130px}.tour-content.changed{animation:copy-enter .45s var(--ease)}.hero-about h2{margin-top:16px}.hero-about{bottom:122px}@media(max-width:600px){.hero{min-height:1120px}.hero-copy{top:44%}.hero-about{bottom:105px}.tour-content{min-height:110px}.hero-about h2{margin-top:12px}}
 </style>
@@ -64,9 +62,17 @@
  .hero-kicker,.edition{top:115px;font-size:9px}
 }
 </style>
+<style>
+.system-manual{padding:0;height:min(880px,calc(100svh - 48px));max-height:calc(100svh - 48px)}
+.system-manual[open]{display:grid;grid-template-rows:auto minmax(0,1fr)}
+.manual-head{padding:18px 36px;border-bottom:1px solid var(--line)}
+.manual-body{min-height:0;overflow:auto;overscroll-behavior:contain;padding:0 36px 30px;scrollbar-gutter:stable}
+.manual-body:focus-visible{outline:2px solid #6a899a;outline-offset:-3px}
+@media(max-width:600px){.system-manual{padding:0;height:calc(100svh - 24px);max-height:calc(100svh - 24px)}.manual-head{padding:10px 20px}.manual-body{padding:0 20px 24px}}
+</style>
 </head>
 <body>
-<div class="cursor-aura" aria-hidden="true"><svg class="cursor-crystal" viewBox="0 0 26 36" fill="none"><path d="M4 1 23 12 17 30 8 35 1 17Z" fill="#d9eff8" stroke="#4d7189" stroke-width=".7"/><path d="m4 1 7 16 12-5M11 17 8 35m3-18 6 13M1 17h10" stroke="white" stroke-width="1.2"/><path d="m4 1 7 16L1 17Z" fill="white"/><path d="m11 17 12-5-6 18Z" fill="#789db3" fill-opacity=".75"/></svg><span class="cursor-label"></span></div>
+<canvas class="pointer-particles" aria-hidden="true"></canvas><div class="cursor-aura" aria-hidden="true"><svg class="cursor-arrow" viewBox="0 0 18 24" fill="none"><path d="M1 1 16 14 9.5 14.3 6 21Z" fill="#f8fcff" stroke="#47677a" stroke-width="1.1" stroke-linejoin="round"/><path d="m2.4 3.2 10.8 9.4-5.1.3Z" fill="#d2ebf4"/></svg></div>
 <a class="skip-link" href="#workspace">跳到需求输入</a>
 <header class="hero" id="top">
   <svg class="grain" aria-hidden="true"><filter id="grain-noise"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(#grain-noise)" opacity=".5"/></svg>
@@ -104,6 +110,7 @@
 
 <dialog class="system-manual" id="system-manual" aria-labelledby="manual-title">
  <div class="manual-head"><span>AI FACTORY / 使用说明</span><button class="manual-close" id="close-manual" type="button" autofocus aria-label="关闭使用说明">关闭 ×</button></div>
+ <div class="manual-body" tabindex="0" role="region" aria-label="使用说明正文">
  <h2 id="manual-title">把想法做出来，<br>每一步都有说明。</h2>
  <p class="manual-intro">这是一个运行在本机的 AI 开发工作台。你输入自然语言需求，AI 整理方案、生成代码并执行检查；方案和应用预览都需要你确认。它帮助推进开发，最终的产品判断仍然属于你。</p>
  <div class="manual-chapters">
@@ -116,6 +123,7 @@
  </div>
  <button class="primary manual-start" id="manual-start" type="button">明白了，开始写需求 ↗</button>
  <p class="manual-footnote">此说明不会启动任务。只有提交工作台里的需求，才会调用模型。</p>
+ </div>
 </dialog>
 <main class="workbench" id="workspace">
   <div class="section-topline micro"><span>01 / THE WORKSPACE</span><span>FROM THOUGHT TO SOMETHING REAL</span></div>
@@ -185,15 +193,49 @@ artControl.addEventListener('pointercancel',()=>{dragStart=null;dragged=false});
 artControl.addEventListener('click',()=>{if(!dragged)selectScene((currentScene+1)%4);dragged=false});
 artControl.addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight'].includes(event.key))return;event.preventDefault();selectScene((currentScene+(event.key==='ArrowRight'?1:3))%4)});
 // Hide the OS arrow only after the custom cursor has a real pointer position.
-const cursor=document.querySelector('.cursor-aura'),cursorLabel=cursor.querySelector('.cursor-label');
-function hideCursor(){cursor.classList.remove('visible','engaged');document.documentElement.classList.remove('crystal-pointer')}
+const cursor=document.querySelector('.cursor-aura');
+const particleCanvas=document.querySelector('.pointer-particles'),particleContext=particleCanvas.getContext('2d');
+let particles=[],particleFrame=0,lastParticlePoint=null;
+function sizeParticles(){
+ const ratio=Math.min(devicePixelRatio||1,1.5);
+ particleCanvas.width=Math.round(innerWidth*ratio);particleCanvas.height=Math.round(innerHeight*ratio);
+ particleContext?.setTransform(ratio,0,0,ratio,0,0);
+}
+function clearParticles(){cancelAnimationFrame(particleFrame);particleFrame=0;particles=[];lastParticlePoint=null;particleContext?.clearRect(0,0,innerWidth,innerHeight)}
+function drawParticles(now){
+ particleFrame=0;particleContext.clearRect(0,0,innerWidth,innerHeight);
+ particles=particles.filter(p=>now-p.born<p.life);
+ for(const p of particles){
+  const age=(now-p.born)/p.life,seconds=(now-p.born)/1000;
+  particleContext.globalAlpha=(1-age)*(1-age)*.85;
+  particleContext.fillStyle=p.color;particleContext.shadowColor='#b9e8fa';particleContext.shadowBlur=4;
+  particleContext.beginPath();particleContext.arc(p.x+p.vx*seconds,p.y+p.vy*seconds,p.radius*(1-age*.55),0,Math.PI*2);particleContext.fill();
+ }
+ particleContext.globalAlpha=1;particleContext.shadowBlur=0;
+ if(particles.length)particleFrame=requestAnimationFrame(drawParticles);
+}
+function emitParticles(x,y){
+ if(!particleContext||reducedMotion.matches)return;
+ if(!lastParticlePoint){lastParticlePoint={x,y};return}
+ const dx=x-lastParticlePoint.x,dy=y-lastParticlePoint.y,distance=Math.hypot(dx,dy);
+ if(distance<7)return;
+ const now=performance.now(),count=Math.min(3,Math.floor(distance/7));
+ for(let i=0;i<count;i++){
+  const t=(i+1)/count;
+  particles.push({x:lastParticlePoint.x+dx*t+3,y:lastParticlePoint.y+dy*t+9,born:now,life:360+Math.random()*220,vx:(Math.random()-.5)*18,vy:8+Math.random()*14,radius:.9+Math.random()*1.2,color:['#fff','#92c4dc','#d8edf7'][i%3]});
+ }
+ particles=particles.slice(-42);lastParticlePoint={x,y};
+ if(!particleFrame)particleFrame=requestAnimationFrame(drawParticles);
+}
+sizeParticles();window.addEventListener('resize',()=>{clearParticles();sizeParticles()});
+function hideCursor(){clearParticles();cursor.classList.remove('visible','engaged');document.documentElement.classList.remove('custom-pointer')}
 document.addEventListener('pointermove',event=>{
  if(!finePointer.matches||event.pointerType==='touch'){hideCursor();return}
  cursor.style.transform=`translate3d(${event.clientX}px,${event.clientY}px,0)`;
  const target=event.target.closest('a,button,summary');
  cursor.classList.add('visible');cursor.classList.toggle('engaged',Boolean(target));
- cursorLabel.textContent=target?.dataset.cursor||(target?'打开 ↗':'');
- document.documentElement.classList.add('crystal-pointer');
+ emitParticles(event.clientX,event.clientY);
+ document.documentElement.classList.add('custom-pointer');
 });
 document.documentElement.addEventListener('pointerleave',hideCursor);window.addEventListener('blur',hideCursor);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)hideCursor()});
@@ -201,9 +243,9 @@ document.addEventListener('scroll',hideCursor,{passive:true});document.addEventL
 reducedMotion.addEventListener('change',hideCursor);finePointer.addEventListener('change',hideCursor);
 const manual=document.getElementById('system-manual'),manualTrigger=document.getElementById('open-manual');
 let manualDestination=null;
-manualTrigger.addEventListener('click',()=>{hideCursor();manual.appendChild(cursor);manual.showModal()});
+manualTrigger.addEventListener('click',()=>{hideCursor();manual.append(particleCanvas,cursor);manual.showModal();document.querySelector('.manual-body').scrollTop=0});
 document.getElementById('close-manual').addEventListener('click',()=>manual.close());
-manual.addEventListener('close',()=>{hideCursor();document.body.appendChild(cursor);const target=manualDestination||manualTrigger;manualDestination=null;target.focus();if(target.id==='idea')document.getElementById('workspace').scrollIntoView({behavior:reducedMotion.matches?'instant':'smooth'})});
+manual.addEventListener('close',()=>{hideCursor();document.body.append(particleCanvas,cursor);const target=manualDestination||manualTrigger;manualDestination=null;target.focus();if(target.id==='idea')document.getElementById('workspace').scrollIntoView({behavior:reducedMotion.matches?'instant':'smooth'})});
 document.getElementById('manual-start').addEventListener('click',()=>{manualDestination=document.getElementById('idea');manual.close()});
 let pointerFrame=0,pointerX=0,pointerY=0;
 function resetParallax(){cancelAnimationFrame(pointerFrame);pointerFrame=0;art.style.removeProperty('--px');art.style.removeProperty('--py');art.style.removeProperty('--pr')}

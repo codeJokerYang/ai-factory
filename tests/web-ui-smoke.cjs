@@ -83,7 +83,12 @@ const output = path.resolve('.factory/visual-review');
     await page.mouse.move(900, 150);
     assert.equal(await page.locator('body').evaluate(el => getComputedStyle(el).cursor), 'none');
     assert(await page.locator('.cursor-aura').evaluate(el => el.classList.contains('visible')));
-    await page.screenshot({path: path.join(output, 'crystal-cursor.png')});
+    await page.mouse.move(1100,250,{steps:18});
+    await page.waitForTimeout(35);
+    assert(await page.locator('.pointer-particles').evaluate(el=>el.getContext('2d').getImageData(0,0,el.width,el.height).data.some((v,i)=>i%4===3&&v>0)), 'no moving particles');
+    await page.screenshot({path: path.join(output, 'particle-cursor.png')});
+    await page.waitForTimeout(700);
+    assert(await page.locator('.pointer-particles').evaluate(el=>el.getContext('2d').getImageData(0,0,el.width,el.height).data.every((v,i)=>i%4!==3||v===0)), 'particles remain after pointer stops');
     await page.locator('#open-manual').click();
     assert(await page.locator('#system-manual').evaluate(el => el.open));
     assert.equal(await page.locator('.manual-chapters details').count(), 6);
@@ -91,6 +96,17 @@ const output = path.resolve('.factory/visual-review');
     for(const width of [1440,390]){
       await page.setViewportSize({width,height:960});
       await page.screenshot({path:path.join(output,`manual-${width}.png`)});
+      await page.locator('.manual-chapters details').evaluateAll(items=>items.forEach(item=>item.open=true));
+      const headerTop=await page.locator('.manual-head').evaluate(el=>el.getBoundingClientRect().top);
+      for(const fraction of [.5,1]){
+        await page.locator('.manual-body').evaluate((el,f)=>{el.scrollTop=el.scrollHeight*f},fraction);
+        assert(await page.evaluate(()=>document.querySelector('.manual-body').getBoundingClientRect().top>=document.querySelector('.manual-head').getBoundingClientRect().bottom), 'header covers scroll viewport');
+        assert.equal(await page.locator('.manual-head').evaluate(el=>el.getBoundingClientRect().top),headerTop);
+        assert.equal(await page.locator('#system-manual').evaluate(el=>el.scrollTop),0);
+        await page.screenshot({path:path.join(output,`manual-scroll-${width}-${fraction}.png`)});
+      }
+      await page.locator('.manual-chapters details').evaluateAll(items=>items.forEach((item,i)=>item.open=i===0));
+      await page.locator('.manual-body').evaluate(el=>el.scrollTop=0);
     }
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('#system-manual').evaluate(el => el.open), false);
@@ -151,6 +167,6 @@ const output = path.resolve('.factory/visual-review');
     const report = JSON.parse(fs.readFileSync(await download.path(), 'utf8'));
     assert.equal(report.phase, 'plan_rejected');
     assert.equal(errorCount, 0, `Unexpected browser errors: ${errors.slice(0, errorCount)}`);
-    console.log('PASS: 11 responsive sizes with caption separation, crystal cursor, sculpture click/drag/keyboard, manual open/Escape/focus, touch, reduced motion, original instructions, readable approval, inert model text, decision retry, report download.');
+    console.log('PASS: 11 responsive sizes with caption separation, triangle cursor and particle decay, sculpture click/drag/keyboard, manual independent scroll/open/Escape/focus, touch, reduced motion, original instructions, readable approval, inert model text, decision retry, report download.');
   } finally {await browser.close();}
 })().catch(error => {console.error(error); process.exitCode = 1;});
