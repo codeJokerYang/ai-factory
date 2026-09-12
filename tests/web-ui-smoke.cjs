@@ -56,7 +56,15 @@ const output = path.resolve('.factory/visual-review');
     }
     await page.setViewportSize({width: 1440, height: 960});
     assert.equal(await page.locator('.study-selector').count(), 0);
+    const tourTitles=['从你的原话开始。','先看清方向，再出发。','让实现过程看得见。','最后一步，由你亲手检验。'];
+    for(const i of [1,2,3,0]){
+      await page.locator('[data-tour]').nth(i).click();
+      assert.equal(await page.locator('#tour-title').innerText(),tourTitles[i]);
+      assert.equal(await page.locator('[data-tour]').nth(i).getAttribute('aria-pressed'),'true');
+      assert(await page.locator('.scene').nth(i).evaluate(el=>el.classList.contains('active')));
+    }
     await page.locator('.art-control').click();
+    assert.equal(await page.locator('#tour-title').innerText(),tourTitles[1]);
     assert(await page.locator('.scene--tilt').evaluate(el => el.classList.contains('active')));
     await page.keyboard.press('ArrowRight');
     assert(await page.locator('.scene--reverse').evaluate(el => el.classList.contains('active')));
@@ -66,6 +74,7 @@ const output = path.resolve('.factory/visual-review');
     await page.mouse.move(artBox.x+artBox.width*.35,artBox.y+artBox.height*.5,{steps:8});
     await page.mouse.up();
     assert(await page.locator('.scene--detail').evaluate(el => el.classList.contains('active')), 'drag switches exactly once');
+    assert.equal(await page.locator('#tour-title').innerText(),tourTitles[3]);
     await page.mouse.move(900, 150);
     assert.equal(await page.locator('body').evaluate(el => getComputedStyle(el).cursor), 'none');
     assert(await page.locator('.cursor-aura').evaluate(el => el.classList.contains('visible')));

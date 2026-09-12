@@ -45,6 +45,8 @@
 @media(hover:none),(pointer:coarse){.cursor-aura{display:none!important}}
 @media(prefers-reduced-motion:reduce){.cursor-aura:before,.cursor-aura:after{display:none}.cursor-crystal{transition:none;transform:none!important}}
 </style>
+<style>.material-index{display:none}.tour-controls{display:flex;justify-content:space-between;gap:10px;margin-top:12px}.tour-controls button{min-height:44px;padding:8px 0;border:0;border-bottom:1px solid transparent;background:none;color:var(--muted);font-size:11px}.tour-controls button[aria-pressed=true]{color:var(--ink);border-bottom-color:var(--ink)}.tour-content{min-height:130px}.tour-content.changed{animation:copy-enter .45s var(--ease)}.hero-about h2{margin-top:16px}.hero-about{bottom:122px}@media(max-width:600px){.hero{min-height:1120px}.hero-copy{top:44%}.hero-about{bottom:105px}.tour-content{min-height:110px}.hero-about h2{margin-top:12px}}
+</style>
 </head>
 <body>
 <div class="cursor-aura" aria-hidden="true"><svg class="cursor-crystal" viewBox="0 0 26 36" fill="none"><path d="M4 1 23 12 17 30 8 35 1 17Z" fill="#d9eff8" stroke="#4d7189" stroke-width=".7"/><path d="m4 1 7 16 12-5M11 17 8 35m3-18 6 13M1 17h10" stroke="white" stroke-width="1.2"/><path d="m4 1 7 16L1 17Z" fill="white"/><path d="m11 17 12-5-6 18Z" fill="#789db3" fill-opacity=".75"/></svg><span class="cursor-label"></span></div>
@@ -67,7 +69,12 @@
   </div><button class="art-control" type="button" aria-label="探索冰质雕塑：点击或左右拖动切换视角，也可用左右方向键" data-cursor="探索 ↔"></button></div>
   <span class="material-index micro" id="material-label" aria-live="polite">01 — GLACIER / 冰川原形</span>
   <div class="hero-copy"><h1>一个人的<br>AI 创作工作台。</h1><p>你描述需求，AI 推进方案与实现。<br>关键审批和最终验收，由你掌握。</p><a class="text-link" href="#workspace">开始创作 <span class="arrow" aria-hidden="true">↗</span></a></div>
-  <section class="hero-about" aria-label="系统简介"><span class="micro">YOUR IDEA. YOUR DIRECTION.</span><h2>从需求，到可预览的应用。</h2><p>需求输入 → 方案确认 → 生成实现 → 预览验收。<br>原始要求贯穿全程，过程和结果都可查看。</p><button class="text-link manual-trigger" id="open-manual" type="button" aria-haspopup="dialog" aria-controls="system-manual" data-cursor="阅读">了解如何使用 <span aria-hidden="true">↗</span></button></section>
+  <section class="hero-about" aria-label="创作步骤介绍">
+    <span class="micro">HOW IT WORKS / 点击雕塑，了解下一步</span>
+    <div class="tour-controls" role="group" aria-label="选择步骤说明"><button type="button" data-tour="0" aria-pressed="true">01 需求</button><button type="button" data-tour="1" aria-pressed="false">02 方案</button><button type="button" data-tour="2" aria-pressed="false">03 实现</button><button type="button" data-tour="3" aria-pressed="false">04 验收</button></div>
+    <div class="tour-content" aria-live="polite" aria-atomic="true"><h2 id="tour-title">从你的原话开始。</h2><p id="tour-copy">在需求框写下目标，把不能妥协的要求逐行列出。原始指令会贯穿生成、修复和核对。</p></div>
+    <button class="text-link manual-trigger" id="open-manual" type="button" aria-haspopup="dialog" aria-controls="system-manual" data-cursor="阅读">完整使用说明 <span aria-hidden="true">↗</span></button>
+  </section>
   <div class="hero-bottom">
     <a class="scroll-note" href="#workspace"><span>SCROLL TO CREATE<br>向下，开始构建</span><span aria-hidden="true">↓</span></a>
     <span class="hero-bottom-note">LOCAL FIRST / 由你发起，由你验收</span>
@@ -133,8 +140,19 @@ const finePointer=matchMedia('(hover: hover) and (pointer: fine)');
 const hero=document.querySelector('.hero'),art=document.querySelector('.art-parallax');
 const sceneNames=['01 — GLACIER / 冰川原形','02 — SUSPENDED / 悬浮倾斜','03 — REFLECTION / 镜像折面','04 — DETAIL / 近观肌理'];
 let currentScene=0;
+const tourContent=[
+ ['从你的原话开始。','在需求框写下目标，把不能妥协的要求逐行列出。原始指令会贯穿生成、修复和核对。'],
+ ['先看清方向，再出发。','方案以功能、范围和实施步骤展开。你可以查看技术细节；批准后才会生成代码，拒绝时可留下反馈。'],
+ ['让实现过程看得见。','在执行区查看进度与日志。生成后会进行构建、审查和指令证据核对，失败信息也会明确展示。'],
+ ['最后一步，由你亲手检验。','打开生成应用的预览，检查页面和操作是否符合预期。代码证据不能替代体验；最终由你决定是否验收。']
+];
+document.querySelectorAll('[data-tour]').forEach(button=>button.addEventListener('click',()=>selectScene(Number(button.dataset.tour))));
 function selectScene(index){
  currentScene=index;
+ document.querySelectorAll('[data-tour]').forEach((button,i)=>button.setAttribute('aria-pressed',String(i===index)));
+ document.getElementById('tour-title').textContent=tourContent[index][0];
+ document.getElementById('tour-copy').textContent=tourContent[index][1];
+ const content=document.querySelector('.tour-content');content.classList.remove('changed');void content.offsetWidth;content.classList.add('changed');
  document.querySelectorAll('.scene').forEach((scene,i)=>scene.classList.toggle('active',i===index));
  document.getElementById('material-label').textContent=sceneNames[index];
 }
