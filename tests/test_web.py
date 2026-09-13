@@ -93,7 +93,7 @@ def test_model_setup_failure_is_visible():
 
 
 def test_public_artwork_is_allowlisted_and_local_only():
-    srv = make_server(0)
+    srv = make_server(0, Jobs())
     thread = threading.Thread(target=srv.serve_forever, daemon=True)
     thread.start()
     base = f'http://127.0.0.1:{srv.server_port}'
@@ -115,3 +115,20 @@ def test_public_artwork_is_allowlisted_and_local_only():
         srv.shutdown()
         srv.server_close()
         thread.join(2)
+
+
+def test_history_listing_auth_and_pagination(server):
+    jobs, request = server
+    ident = request('/api/jobs', {'idea': '持久记录需求'})['id']
+    wait_until(lambda: jobs.snapshot(ident)['waiting'] == 'plan')
+    assert request('/api/jobs?limit=1')['tasks'][0]['id'] == ident
+    assert request('/api/jobs?offset=1')['tasks'] == []
+    for path, headers in [('/api/jobs', {}), ('/api/jobs?limit=0', None),
+                          ('/api/jobs?offset=-1', None)]:
+        with pytest.raises(HTTPError):
+            request(path, headers=headers)
+    with pytest.raises(HTTPError):
+        request('/api/jobs/' + ident + '/preview', {'action': 'start'}, headers={})
+    with pytest.raises(HTTPError) as exc:
+        request('/api/jobs/' + ident + '/preview', {'action': 'start'})
+    assert exc.value.code == 400  # live task cannot be launched as an archive preview

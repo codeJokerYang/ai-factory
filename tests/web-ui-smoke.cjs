@@ -19,7 +19,7 @@ const output = path.resolve('.factory/visual-review');
     page.on('pageerror', error => errors.push(error.message));
     page.on('console', message => {if (message.type() === 'error') errors.push(message.text());});
     const state = {
-      phase: 'plan_done', errors: [], build_dir: null, acceptance_report: null,
+      idea:'历史测试需求', phase: 'plan_done', errors: [], build_dir: null, acceptance_report: null,
       requirements: ['中文界面', '手机上也能使用'],
       product_spec: {project_name: '个人作品集', one_liner: '一个展示个人介绍、项目与联系方式的中文网站。',
         target_users: '潜在合作伙伴', core_features: ['个人介绍与经历', '项目展示及筛选', '联系入口'],
@@ -31,8 +31,17 @@ const output = path.resolve('.factory/visual-review');
     };
     let snapshot = {id: 'visual-test', waiting: 'plan', done: false, logs: ['已整理需求', '等待确认方案'], state};
     let submitted, decision, rejectOnce = true;
+    const archived={id:'archive-1',done:true,waiting:null,created_at:'2026-09-10T08:00:00Z',updated_at:'2026-09-10T09:00:00Z',logs:['历史日志'],decisions:[{stage:'plan',approved:true,feedback:'保留中文',at:'2026-09-10T08:10:00Z'}],state:{...state,phase:'gate_2_approved',gate_2_approved:true,build_dir:'generated/archive-1',generated_files:[{path:'app/page.tsx',content:'export default function Page(){return <main>作品集</main>}'}]}};
+    let archivedPreview={status:'stopped',url:null,error:null};
     await page.route('**/api/**', async route => {
       const request = route.request();
+      const pathname=new URL(request.url()).pathname;
+      if(request.method()==='GET'&&pathname==='/api/jobs')return route.fulfill({json:{tasks:[{id:'archive-1',title:'历史作品集',status:'accepted',created_at:archived.created_at}],total:1}});
+      if(pathname==='/api/jobs/archive-1/preview'){
+        if(request.method()==='POST')archivedPreview=request.postDataJSON().action==='start'?{status:'ready',url:'http://127.0.0.1:54321',error:null}:{status:'stopped',url:null,error:null};
+        return route.fulfill({json:archivedPreview});
+      }
+      if(pathname==='/api/jobs/archive-1')return route.fulfill({json:archived});
       if (request.method() === 'POST' && request.url().endsWith('/api/jobs')) {
         submitted = request.postDataJSON();
         return route.fulfill({json: {id: 'visual-test'}});
@@ -97,16 +106,16 @@ const output = path.resolve('.factory/visual-review');
       await page.setViewportSize({width,height:960});
       await page.screenshot({path:path.join(output,`manual-${width}.png`)});
       await page.locator('.manual-chapters details').evaluateAll(items=>items.forEach(item=>item.open=true));
-      const headerTop=await page.locator('.manual-head').evaluate(el=>el.getBoundingClientRect().top);
+      const headerTop=await page.locator('#system-manual .manual-head').evaluate(el=>el.getBoundingClientRect().top);
       for(const fraction of [.5,1]){
-        await page.locator('.manual-body').evaluate((el,f)=>{el.scrollTop=el.scrollHeight*f},fraction);
+        await page.locator('#system-manual .manual-body').evaluate((el,f)=>{el.scrollTop=el.scrollHeight*f},fraction);
         assert(await page.evaluate(()=>document.querySelector('.manual-body').getBoundingClientRect().top>=document.querySelector('.manual-head').getBoundingClientRect().bottom), 'header covers scroll viewport');
-        assert.equal(await page.locator('.manual-head').evaluate(el=>el.getBoundingClientRect().top),headerTop);
+        assert.equal(await page.locator('#system-manual .manual-head').evaluate(el=>el.getBoundingClientRect().top),headerTop);
         assert.equal(await page.locator('#system-manual').evaluate(el=>el.scrollTop),0);
         await page.screenshot({path:path.join(output,`manual-scroll-${width}-${fraction}.png`)});
       }
       await page.locator('.manual-chapters details').evaluateAll(items=>items.forEach((item,i)=>item.open=i===0));
-      await page.locator('.manual-body').evaluate(el=>el.scrollTop=0);
+      await page.locator('#system-manual .manual-body').evaluate(el=>el.scrollTop=0);
     }
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('#system-manual').evaluate(el => el.open), false);
@@ -128,13 +137,41 @@ const output = path.resolve('.factory/visual-review');
     await touchPage.locator('#close-manual').tap();
     await touchContext.close();
 
+    assert.equal(await page.locator('#task-history').isVisible(),false);
+    await page.locator('#open-history').click();
+    await page.locator('#task-history').waitFor({state:'visible'});
+    await page.screenshot({path:path.join(output,'history-list.png')});
+    await page.locator('.history-row').first().click();
+    await page.locator('#history-dialog').waitFor({state:'visible'});
+    assert.equal(await page.locator('#history-idea').innerText(),archived.state.idea||'');
+    assert.equal(await page.locator('#history-resume').isVisible(),false);
+    await page.locator('#history-dialog').getByText('生成结果与重新预览',{exact:true}).click();
+    await page.locator('#history-preview-start').click();
+    await page.locator('#history-preview-link').waitFor({state:'visible'});
+    await page.locator('#history-preview-stop').click();
+    await page.waitForFunction(()=>document.getElementById('history-preview-link').hidden);
+    await page.locator('#history-files summary').first().click();
+    assert((await page.locator('#history-files pre').innerText()).includes('<main>作品集</main>'));
+    for(const width of [1440,390]){
+      await page.setViewportSize({width,height:900});
+      await page.screenshot({path:path.join(output,`history-detail-${width}.png`)});
+      assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    }
+    const historyDownloadEvent=page.waitForEvent('download');
+    await page.locator('#history-download').click();
+    const historyDownload=await historyDownloadEvent;
+    assert.equal(JSON.parse(fs.readFileSync(await historyDownload.path(),'utf8')).id,'archive-1');
+    await page.locator('#history-close').click();
+    assert(await page.locator('#task-history').isVisible());
+    await page.locator('#history-list-close').click();
+
     await page.locator('#idea').fill('建立我的中文作品集，保留所有原始要求。');
     await page.locator('#requirements').fill('中文界面\n\n  手机上也能使用  ');
     await page.locator('#start').click();
     await page.locator('#approval').waitFor({state: 'visible'});
     assert.deepEqual(submitted, {idea: '建立我的中文作品集，保留所有原始要求。', requirements: ['中文界面', '手机上也能使用']});
     assert(await page.locator('#plan').innerText().then(text => text.includes('个人作品集') && !text.includes('"core_features"')));
-    await page.getByText('查看技术方案', {exact: true}).click();
+    await page.locator('#plan').getByText('查看技术方案', {exact: true}).click();
     await page.waitForTimeout(1650);
     assert(await page.locator('#plan details').last().getAttribute('open') !== null, 'poll collapsed technical details');
     // Model text must remain inert even when it contains HTML-like content.

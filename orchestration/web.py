@@ -7,23 +7,39 @@ import secrets
 import threading
 import time
 import uuid
+import inspect
+import sqlite3
+from urllib.parse import urlsplit, parse_qs
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from . import config
 from .state import ProjectState, ProjectPhase
+from .history import History, HistoryPreview, now_iso, redact
 
 MAX_BODY = 128 * 1024
 
 
 class Jobs:
-    def __init__(self, execute_fn=None, llm_factory=None):
+    def __init__(self, execute_fn=None, llm_factory=None, history_path=None, reports_dir=None, preview_factory=None):
         from .build_cli import execute
         from .llm import AnthropicLLM
         self.execute = execute_fn or execute
         self.llm_factory = llm_factory or AnthropicLLM
         self.lock = threading.RLock()
         self.items = {}
+        self.history = History(history_path)
+        if reports_dir is not None:
+            self.history.import_reports(reports_dir)
+        self.previews = HistoryPreview(config.GENERATED_DIR, preview_factory)
+
+    def _persist(self, ident):
+        job = self.items[ident]
+        job['updated_at'] = now_iso()
+        self.history.save(self.snapshot(ident))
+
+    def listing(self, offset=0, limit=30):
+        return self.history.listing(offset, limit)
 
     def start(self, idea, requirements):
         if not isinstance(idea, str) or not idea.strip() or len(idea) > 30000:
@@ -38,7 +54,13 @@ class Jobs:
                 del self.items[next(iter(self.items))]
             ident = uuid.uuid4().hex[:12]
             state = ProjectState(project_id=ident, idea=idea.strip(), requirements=[r.strip() for r in requirements])
-            self.items[ident] = dict(state=state, logs=[], done=False, waiting=None, decision=None, event=threading.Event())
+            self.items[ident] = dict(state=state, logs=[], done=False, waiting=None, decision=None,
+                                     event=threading.Event(), decisions=[], created_at=now_iso(), updated_at=now_iso())
+            try:
+                self._persist(ident)
+            except Exception:
+                del self.items[ident]
+                raise
         threading.Thread(target=self._run, args=(ident,), daemon=True).start()
         return ident
 
@@ -48,6 +70,12 @@ class Jobs:
         def emit(message):
             with self.lock:
                 job['logs'].append(str(message))
+                self._persist(ident)
+
+        def checkpoint(state):
+            with self.lock:
+                job['state'] = state
+                self._persist(ident)
 
         def approve(stage, state):
             with self.lock:
@@ -55,6 +83,7 @@ class Jobs:
                 job['decision'] = None
                 job['event'].clear()
                 job['waiting'] = stage
+                self._persist(ident)
             signaled = job['event'].wait(1800)
             with self.lock:
                 result = job['decision'] if signaled else (False, '审批等待超时')
@@ -62,9 +91,10 @@ class Jobs:
                 return result
 
         try:
+            extra = {'checkpoint': checkpoint} if 'checkpoint' in inspect.signature(self.execute).parameters else {}
             state = self.execute(job['state'], self.llm_factory(),
                                  approver=lambda s: approve('plan', s),
-                                 preview_approver=lambda s: approve('preview', s), emit=emit)
+                                 preview_approver=lambda s: approve('preview', s), emit=emit, **extra)
             with self.lock:
                 job['state'] = state
         except Exception as exc:
@@ -75,6 +105,10 @@ class Jobs:
             with self.lock:
                 job['waiting'] = None
                 job['done'] = True
+                try:
+                    self._persist(ident)
+                except (OSError, sqlite3.Error) as exc:
+                    job['state'].errors.append('历史保存失败，请下载报告：' + str(exc))
 
     def decide(self, ident, stage, approved, feedback):
         if type(approved) is not bool or not isinstance(feedback, str) or len(feedback) > 5000:
@@ -84,17 +118,29 @@ class Jobs:
             if job['done'] or job['waiting'] != stage or job['decision'] is not None:
                 raise ValueError('没有对应的待审批阶段，或已审批')
             job['decision'] = (approved, feedback or None)
+            entry = dict(stage=stage, approved=approved, feedback=feedback, at=now_iso())
+            job['decisions'].append(entry)
+            try:
+                self._persist(ident)
+            except Exception:
+                job['decision'] = None
+                job['decisions'].pop()
+                raise
             job['event'].set()
 
     def snapshot(self, ident):
         with self.lock:
+            if ident not in self.items:
+                return self.history.get(ident)
             j = self.items[ident]
-            return dict(id=ident, done=j['done'], waiting=j['waiting'], logs=list(j['logs']),
-                        state=j['state'].model_dump(mode='json'))
+            return redact(dict(id=ident, done=j['done'], waiting=j['waiting'], logs=list(j['logs']),
+                        created_at=j['created_at'], updated_at=j['updated_at'], decisions=list(j['decisions']),
+                        state=j['state'].model_dump(mode='json')))
 
 
 def make_server(port=8765, jobs=None):
-    jobs = jobs or Jobs()
+    jobs = jobs or Jobs(history_path=config.PROJECT_ROOT / '.factory' / 'history.sqlite3',
+                        reports_dir=config.PROJECT_ROOT / '.factory' / 'runs')
     token = secrets.token_urlsafe(32)
 
     class Handler(BaseHTTPRequestHandler):
@@ -129,11 +175,20 @@ def make_server(port=8765, jobs=None):
                 return self.reply(200, asset.read_bytes(), 'image/png')
             if self.headers.get('X-Factory-Token') != token:
                 return self.reply(403, {'error': '会话无效，请刷新页面'})
+            parsed = urlsplit(self.path)
+            if parsed.path == '/api/jobs':
+                try:
+                    query = parse_qs(parsed.query)
+                    return self.reply(200, jobs.listing(int(query.get('offset', ['0'])[0]), int(query.get('limit', ['30'])[0])))
+                except (ValueError, sqlite3.Error) as exc:
+                    return self.reply(400, {'error': str(exc)})
+            if self.path.startswith('/api/jobs/') and self.path.endswith('/preview'):
+                return self.reply(200, jobs.previews.snapshot(self.path.split('/')[3]))
             if self.path.startswith('/api/jobs/'):
                 try:
                     return self.reply(200, jobs.snapshot(self.path.split('/')[-1]))
                 except KeyError:
-                    return self.reply(404, {'error': '任务不存在；服务重启后请查看本地报告'})
+                    return self.reply(404, {'error': '任务不存在，请从本地任务历史重新选择'})
             return self.reply(404, {'error': 'not found'})
 
         def do_POST(self):
@@ -156,11 +211,28 @@ def make_server(port=8765, jobs=None):
                 if self.path.startswith('/api/jobs/') and self.path.endswith('/decision'):
                     jobs.decide(self.path.split('/')[3], data.get('stage'), data.get('approved'), data.get('feedback', ''))
                     return self.reply(200, {'ok': True})
+                if self.path.startswith('/api/jobs/') and self.path.endswith('/preview'):
+                    ident = self.path.split('/')[3]
+                    if data.get('action') == 'stop':
+                        return self.reply(200, jobs.previews.stop(ident))
+                    if data.get('action') != 'start':
+                        raise ValueError('预览操作无效')
+                    return self.reply(202, jobs.previews.start(jobs.snapshot(ident)))
                 return self.reply(404, {'error': 'not found'})
             except (ValueError, KeyError, UnicodeError) as exc:
                 return self.reply(400, {'error': str(exc)})
+            except (OSError, sqlite3.Error):
+                return self.reply(503, {'error': '本地历史存储不可用，请检查磁盘空间与文件权限；任务未能保存'})
 
-    return ThreadingHTTPServer(('127.0.0.1', port), Handler)
+    class LocalServer(ThreadingHTTPServer):
+        # Windows SO_REUSEADDR permits two processes to bind the same local port.
+        allow_reuse_address = False if __import__('os').name == 'nt' else True
+
+        def server_close(self):
+            jobs.previews.stop()
+            super().server_close()
+
+    return LocalServer(('127.0.0.1', port), Handler)
 
 
 def main(argv=None):

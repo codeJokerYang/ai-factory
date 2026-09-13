@@ -30,6 +30,7 @@ class ProjectPhase(str, Enum):
     GATE_2_APPROVED = "gate_2_approved"
     GATE_2_REJECTED = "gate_2_rejected"
     FAILED = "failed"
+    INTERRUPTED = "interrupted"
 
 
 class ProjectState(BaseModel):

@@ -75,7 +75,7 @@ def review_and_revise(state, target, project, builder, reviewer, *, write_fn=Non
     return state.code_review
 
 
-def execute(state, llm, *, approver, preview_approver=None, generate_only=False, emit=print):
+def execute(state, llm, *, approver, preview_approver=None, generate_only=False, emit=print, checkpoint=None):
     """Shared CLI/web workflow. Reports are local; no automatic publish or merge."""
     from .agents.reviewer import Reviewer
     from .agents.security import SecurityAgent
@@ -89,7 +89,13 @@ def execute(state, llm, *, approver, preview_approver=None, generate_only=False,
     report_dir.mkdir(parents=True, exist_ok=True)
 
     def save():
-        (report_dir / 'report.json').write_text(state.model_dump_json(indent=2), encoding='utf-8')
+        import json
+        from .history import redact
+        temp = report_dir / 'report.json.tmp'
+        temp.write_text(json.dumps(redact(state.model_dump(mode='json')), ensure_ascii=False, indent=2), encoding='utf-8')
+        temp.replace(report_dir / 'report.json')
+        if checkpoint:
+            checkpoint(state)
 
     def step(label, fn):
         nonlocal state
