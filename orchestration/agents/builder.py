@@ -54,6 +54,9 @@ class Builder(Agent):
             state.phase = ProjectPhase.FAILED
             return state
 
+        if state.base_version:
+            return self.patch_existing(state, build_prompt(state.product_spec.model_dump_json(), state.architecture.model_dump_json()))
+
         state.phase = ProjectPhase.BUILDING
         spec_json = state.product_spec.model_dump_json(indent=2)
         arch_json = state.architecture.model_dump_json(indent=2)
@@ -89,6 +92,8 @@ class Builder(Agent):
 
     def repair(self, state: ProjectState, error_log: str) -> ProjectState:
         """构建门失败后自愈：把编译器报错 + 当前文件回灌，生成修正后的完整文件集。"""
+        if state.base_version:
+            return self.patch_existing(state, '修复本次构建错误：\n' + error_log)
         current = [{"path": f.path, "content": f.content} for f in state.generated_files]
         raw = self.complete(state,
             model=self.model,
@@ -109,6 +114,8 @@ class Builder(Agent):
 
     def revise(self, state: ProjectState, review_feedback: str) -> ProjectState:
         """按 Reviewer 审查意见修订代码（FR-2.5 veto → fix）。"""
+        if state.base_version:
+            return self.patch_existing(state, '按审查意见修订：\n' + review_feedback)
         current = [{"path": f.path, "content": f.content} for f in state.generated_files]
         raw = self.complete(state,
             model=self.model,
@@ -124,5 +131,26 @@ class Builder(Agent):
                 state.warnings.append(f"builder.revise: 依赖 {name} 不在白名单，已忽略")
         except Exception as exc:  # noqa: BLE001
             state.errors.append(f"builder.revise: {exc}")
+            state.phase = ProjectPhase.FAILED
+        return state
+
+    def patch_existing(self, state, purpose):
+        from ..revisions import patch_prompt, apply_patch_response
+        try:
+            raw = self.complete(state, model=self.model,
+                system=SYSTEM + '\n增量模式覆盖上面的输出格式：只返回 changes 和 dependencies，不返回 files。',
+                prompt=patch_prompt(state.generated_files, purpose), max_tokens=BUILDER_MAX_TOKENS)
+            files, deps = apply_patch_response(raw, state.generated_files)
+            if not isinstance(deps, dict):
+                raise ValueError('dependencies 必须是对象')
+            state.generated_files = files
+            for name in deps:
+                if name in ALLOWED_EXTRA_DEPS:
+                    state.extra_dependencies[name] = ALLOWED_EXTRA_DEPS[name]
+                else:
+                    state.warnings.append(f'builder: 依赖 {name} 不在白名单，已忽略')
+            state.phase = ProjectPhase.BUILD_DONE
+        except Exception as exc:
+            state.errors.append(f'builder.patch: {exc}')
             state.phase = ProjectPhase.FAILED
         return state

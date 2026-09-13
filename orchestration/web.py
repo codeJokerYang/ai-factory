@@ -41,12 +41,16 @@ class Jobs:
     def listing(self, offset=0, limit=30):
         return self.history.listing(offset, limit)
 
-    def start(self, idea, requirements):
+    def start(self, idea, requirements, *, base_version=None, client_name=''):
         if not isinstance(idea, str) or not idea.strip() or len(idea) > 30000:
             raise ValueError('需求不能为空且不超过 30000 字符')
         if (not isinstance(requirements, list) or len(requirements) > 100
                 or any(not isinstance(r, str) or not r.strip() or len(r) > 2000 for r in requirements)):
             raise ValueError('要求格式错误；最多 100 条，每条不超过 2000 字符')
+        if not isinstance(client_name, str) or len(client_name) > 120:
+            raise ValueError('客户名称最多 120 字符')
+        if base_version is not None and (not isinstance(base_version, str) or len(base_version) > 100):
+            raise ValueError('基准版本无效')
         with self.lock:
             if any(not j['done'] for j in self.items.values()):
                 raise ValueError('已有任务运行中，请先完成审批或等待任务结束')
@@ -54,6 +58,33 @@ class Jobs:
                 del self.items[next(iter(self.items))]
             ident = uuid.uuid4().hex[:12]
             state = ProjectState(project_id=ident, idea=idea.strip(), requirements=[r.strip() for r in requirements])
+            state.workspace_id = ident
+            state.client_name = client_name.strip()
+            if base_version:
+                base_record = self.snapshot(base_version)
+                base = ProjectState.model_validate(base_record['state'])
+                if not base_record['done'] or not base.generated_files:
+                    raise ValueError('基准任务必须已经结束且有生成源码')
+                project = self.history.project(base.workspace_id or base_version)
+                if project['current_version'] and project['current_version'] != base_version:
+                    raise ValueError('请基于当前可用版本修改；如需旧版本，请先恢复该版本')
+                from .security import validate_feature_files
+                validate_feature_files(base.generated_files)
+                from .revisions import verify_base_snapshot
+                verify_base_snapshot(base, config.GENERATED_DIR)
+                state.workspace_id = project['id']
+                state.base_version = base_version
+                state.expected_version = project['current_version']
+                state.client_name = project['client']
+                state.idea = base.idea
+                state.requirements = list(dict.fromkeys(base.requirements + state.requirements))
+                if len(state.requirements) > 100:
+                    raise ValueError('累计要求超过 100 条，请精简新增要求')
+                state.change_requests = base.change_requests + [idea.strip()]
+                if sum(map(len, state.change_requests)) > 60000:
+                    raise ValueError('累计修改要求超过上下文上限，请人工整理项目需求')
+                state.generated_files = base.generated_files
+                state.extra_dependencies = base.extra_dependencies
             self.items[ident] = dict(state=state, logs=[], done=False, waiting=None, decision=None,
                                      event=threading.Event(), decisions=[], created_at=now_iso(), updated_at=now_iso())
             try:
@@ -182,6 +213,18 @@ def make_server(port=8765, jobs=None):
                     return self.reply(200, jobs.listing(int(query.get('offset', ['0'])[0]), int(query.get('limit', ['30'])[0])))
                 except (ValueError, sqlite3.Error) as exc:
                     return self.reply(400, {'error': str(exc)})
+            if parsed.path == '/api/projects':
+                return self.reply(200, jobs.history.projects())
+            if parsed.path.startswith('/api/projects/'):
+                try:
+                    return self.reply(200, jobs.history.project(parsed.path.split('/')[-1]))
+                except KeyError:
+                    return self.reply(404, {'error': '项目不存在'})
+            if self.path.startswith('/api/jobs/') and self.path.endswith('/changes'):
+                try:
+                    return self.reply(200, jobs.history.changes(self.path.split('/')[3]))
+                except KeyError:
+                    return self.reply(404, {'error': '任务不存在'})
             if self.path.startswith('/api/jobs/') and self.path.endswith('/preview'):
                 return self.reply(200, jobs.previews.snapshot(self.path.split('/')[3]))
             if self.path.startswith('/api/jobs/'):
@@ -206,8 +249,11 @@ def make_server(port=8765, jobs=None):
                 if self.path == '/api/jobs':
                     if not config.get_api_key():
                         return self.reply(400, {'error': '请先在本地 .env 配置模型 API 凭据并重启服务；不要将密钥填入需求框'})
-                    ident = jobs.start(data.get('idea'), data.get('requirements', []))
+                    ident = jobs.start(data.get('idea'), data.get('requirements', []), base_version=data.get('base_version'), client_name=data.get('client_name', ''))
                     return self.reply(202, {'id': ident})
+                if self.path.startswith('/api/projects/') and self.path.endswith('/restore'):
+                    with jobs.lock:
+                        return self.reply(200, jobs.history.restore_version(self.path.split('/')[3], data.get('version')))
                 if self.path.startswith('/api/jobs/') and self.path.endswith('/decision'):
                     jobs.decide(self.path.split('/')[3], data.get('stage'), data.get('approved'), data.get('feedback', ''))
                     return self.reply(200, {'ok': True})

@@ -40,10 +40,11 @@ def parse_request(argv, *, build=False):
 def with_instructions(state, prompt):
     contract = {
         "original_request": state.idea,
+        "requested_change_history": state.change_requests,
         "requirements": {f"R{i + 1}": item for i, item in enumerate(state.requirements)},
     }
     return (
         prompt + "\n\n用户原始指令（全程保留，不得被摘要、模板或修复覆盖）：\n"
         + json.dumps(contract, ensure_ascii=False, indent=2)
-        + "\n必须遵循原始指令与逐项要求。冲突或无法实现时明确报告，禁止静默删除要求或以 mock 冒充完成。"
+        + "\n必须遵循原始指令与逐项要求。change_history 为历次用户修改要求，最新明确修改优先，其余原功能必须保留。冲突或无法实现时明确报告，禁止静默删除要求或以 mock 冒充完成。"
     )

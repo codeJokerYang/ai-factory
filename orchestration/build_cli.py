@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import sys
 import uuid
+import time
 from typing import List, Optional
 
 from . import config
@@ -93,7 +94,16 @@ def execute(state, llm, *, approver, preview_approver=None, generate_only=False,
         from .history import redact
         temp = report_dir / 'report.json.tmp'
         temp.write_text(json.dumps(redact(state.model_dump(mode='json')), ensure_ascii=False, indent=2), encoding='utf-8')
-        temp.replace(report_dir / 'report.json')
+        # Windows indexers can briefly hold the destination without delete sharing.
+        # Retry boundedly; never truncate the last valid report to work around a lock.
+        for attempt in range(4):
+            try:
+                temp.replace(report_dir / 'report.json')
+                break
+            except PermissionError:
+                if attempt == 3:
+                    raise
+                time.sleep(.05 * (attempt + 1))
         if checkpoint:
             checkpoint(state)
 

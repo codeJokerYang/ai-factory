@@ -58,6 +58,9 @@ class History:
         self.db.execute('''CREATE TABLE IF NOT EXISTS tasks (
             id TEXT PRIMARY KEY, created TEXT NOT NULL, updated TEXT NOT NULL,
             title TEXT NOT NULL, status TEXT NOT NULL, document TEXT NOT NULL)''')
+        from .projects import initialize
+        with self.db:
+            initialize(self.db)
         self.db.commit()
         self.warnings = []
         # Only unfinished records become interrupted. Never replay an approval.
@@ -76,11 +79,61 @@ class History:
         state = record['state']
         title = (state.get('product_spec') or {}).get('project_name') or state['idea'].splitlines()[0]
         with self.lock, self.db:
+            previous = self.db.execute('SELECT document FROM tasks WHERE id=?', (record['id'],)).fetchone()
+            if previous and json.loads(previous[0]).get('done'):
+                if json.loads(previous[0]) != record:
+                    raise ValueError('已结束的任务版本不可覆盖，请创建新版本')
+                return
             self.db.execute('''INSERT INTO tasks VALUES (?,?,?,?,?,?)
                 ON CONFLICT(id) DO UPDATE SET updated=excluded.updated,
                 title=excluded.title, status=excluded.status, document=excluded.document''', (
                     record['id'], record['created_at'], record['updated_at'], title[:100],
                     status_of(record), json.dumps(record, ensure_ascii=False)))
+            from .projects import sync
+            sync(self.db, record)
+
+    def projects(self):
+        with self.lock:
+            rows = self.db.execute('SELECT id,title,client,current_version,created,updated FROM projects ORDER BY updated DESC,id').fetchall()
+        return dict(projects=[dict(zip(('id','title','client','current_version','created_at','updated_at'), row)) for row in rows])
+
+    def project(self, ident):
+        with self.lock:
+            row = self.db.execute('SELECT id,title,client,current_version,created,updated FROM projects WHERE id=?', (ident,)).fetchone()
+            if row is None:
+                raise KeyError('项目不存在')
+            result = dict(zip(('id','title','client','current_version','created_at','updated_at'), row))
+            rows = self.db.execute('SELECT v.id,v.parent,v.ordinal,t.status,t.updated FROM versions v JOIN tasks t ON v.id=t.id WHERE v.project=? ORDER BY v.ordinal DESC', (ident,)).fetchall()
+            result['versions'] = [dict(zip(('id','parent','number','status','updated_at'), row)) for row in rows]
+            events = self.db.execute('SELECT action,previous,target,created FROM project_events WHERE project=? ORDER BY id DESC', (ident,)).fetchall()
+            result['events'] = [dict(zip(('action','previous','target','at'), row)) for row in events]
+            return result
+
+    def restore_version(self, project, version):
+        from .projects import accepted
+        with self.lock, self.db:
+            item = self.project(project)
+            if not any(v['id'] == version for v in item['versions']):
+                raise ValueError('版本不属于此项目')
+            if any(v['status'] in ('running', 'waiting_plan', 'waiting_preview') for v in item['versions']):
+                raise ValueError('项目仍有运行任务，暂不能切换版本')
+            if not accepted(self.get(version)):
+                raise ValueError('只能恢复已通过全部检查并人工验收的版本')
+            previous = item['current_version']
+            if previous != version:
+                stamp = now_iso()
+                self.db.execute('UPDATE projects SET current_version=?,updated=? WHERE id=?', (version, stamp, project))
+                self.db.execute('INSERT INTO project_events(project,action,previous,target,created) VALUES (?,?,?,?,?)',
+                                (project, 'restore', previous, version, stamp))
+            return self.project(project)
+
+    def changes(self, ident):
+        from .revisions import file_diff
+        with self.lock:
+            record = self.get(ident)
+            base = record['state'].get('base_version')
+            before = self.get(base)['state'].get('generated_files', []) if base else []
+            return dict(base_version=base, files=file_diff(before, record['state'].get('generated_files', [])))
 
     def get(self, ident):
         with self.lock:

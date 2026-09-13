@@ -135,8 +135,10 @@
     <section class="input-section" aria-labelledby="input-title">
       <div class="section-heading"><h3 id="input-title">今天，想做点什么？</h3><span>YOUR DIRECTION</span></div>
       <form id="request">
+        <div id="revision-context" class="muted" hidden><span id="revision-label"></span> <button type="button" class="secondary" id="revision-cancel">改为新项目</button></div>
         <label for="idea">你的需求</label><textarea id="idea" rows="5" required maxlength="30000" placeholder="例如：做一个中文任务管理工具，可以新增、完成和筛选任务。刷新后数据仍然保留，不需要登录。"></textarea>
         <label for="requirements">必须满足的要求<span class="optional">选填 · 每行一条</span></label><textarea id="requirements" rows="3" placeholder="全部界面使用中文&#10;刷新页面后保留任务&#10;不使用模拟数据冒充持久化"></textarea>
+        <details class="environment-note"><summary>关联客户（选填）</summary><label for="client-name">客户或业务名称</label><textarea id="client-name" rows="1" maxlength="120" placeholder="例如：某工作室。修改已有项目时沿用原客户。"></textarea></details>
         <details class="environment-note"><summary>本地运行说明</summary><p class="muted">支持 Next.js 应用。模型凭据从本地环境读取，请勿填写在需求中。生成代码在本机安装依赖和运行，尚无容器隔离。</p></details>
         <button id="start" class="primary" type="submit"><span>开始执行</span><span aria-hidden="true">↗</span></button>
       </form>
@@ -179,6 +181,8 @@
   <div class="manual-head"><span>LOCAL TASK / 本地记录</span><button class="manual-close" id="history-close" type="button" autofocus>返回列表 ←</button></div>
   <div class="manual-body" tabindex="0" role="region" aria-label="任务详情正文">
     <h2 id="history-title"></h2><p class="muted" id="history-meta"></p>
+    <div class="history-actions"><button class="secondary" type="button" id="history-edit">继续修改这个项目 ↗</button></div>
+    <details id="project-details"><summary>项目版本与修改差异</summary><p class="muted" id="project-meta"></p><div id="project-versions"></div><button type="button" class="secondary" id="project-restore" hidden>恢复此版本为当前版本</button><p class="muted">恢复只切换项目版本，不部署、不改写原目录。失败版本不会替换已验收版本。</p><div id="version-diff"></div><p class="error" id="project-error" role="alert"></p></details>
     <h3>原始需求</h3><div class="history-data" id="history-idea"></div>
     <div class="history-actions"><button class="primary" id="history-resume" type="button" hidden>回到执行与审批 ↗</button><button class="secondary" id="history-download" type="button">下载完整任务记录 ↓</button></div>
     <div id="history-detail-error" class="error" role="alert"></div>
@@ -290,18 +294,19 @@ hero.addEventListener('pointermove',event=>{
 hero.addEventListener('pointerleave',resetParallax);
 reducedMotion.addEventListener('change',resetParallax);finePointer.addEventListener('change',resetParallax);
 
-const token='__TOKEN__';let job=null,timer=null,last=null,waiting=null;
+const token='__TOKEN__';let job=null,timer=null,last=null,waiting=null,revisionBase=null;
 const $=id=>document.getElementById(id);
 async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',headers:{'X-Factory-Token':token,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});const d=await r.json();if(!r.ok)throw Error(d.error||'请求失败');return d}
 // Render model output as text nodes: never interpret generated HTML.
 let approvalKey='';
 function node(tag,text,cls){const el=document.createElement(tag);if(text!=null)el.textContent=String(text);if(cls)el.className=cls;return el}
 function renderApproval(state,stage,root=$('plan')){
- const key=JSON.stringify([stage,state.product_spec,state.architecture,state.dag,state.requirements,state.acceptance_report]);
+ const key=JSON.stringify([stage,state.product_spec,state.architecture,state.dag,state.requirements,state.acceptance_report,state.change_requests]);
  if(root===$('plan')){if(key===approvalKey)return;approvalKey=key;}
  root.replaceChildren();
  function section(title){const box=node('section',null,'plan-section');box.appendChild(node('h3',title));root.appendChild(box);return box}
  function list(title,items,collapsed=false){if(!Array.isArray(items)||!items.length)return;let box;if(collapsed){box=node('details',null,'plan-section');box.appendChild(node('summary',title+' · '+items.length+' 项'));root.appendChild(box)}else box=section(title);const ul=node('ul');for(const item of items)ul.appendChild(node('li',item));box.appendChild(ul)}
+ if(state.change_requests?.length){section('本次修改').appendChild(node('p',state.change_requests.at(-1)));list('之前的修改要求',state.change_requests.slice(0,-1),true)}
  if(stage!=='plan'){
   section('验收摘要').appendChild(node('p',state.acceptance_report?.summary||'请打开预览，检查实际操作是否符合你的需求。'));
   section('请重点确认').appendChild(node('p','页面内容、关键操作和数据保存是否符合预期。批准后本次预览服务会停止。'));
@@ -335,7 +340,7 @@ function renderApproval(state,stage,root=$('plan')){
 async function poll(){try{const d=await api('/api/jobs/'+job);last=d;waiting=d.waiting;const s=d.state;document.body.classList.add('busy');const step=s.gate_2_approved||d.waiting==='preview'?3:d.waiting==='plan'?1:s.build_dir?2:1;document.querySelectorAll('.steps li').forEach((el,i)=>{el.classList.toggle('active',i===step);el.classList.toggle('done',i<step);if(i===step)el.setAttribute('aria-current','step');else el.removeAttribute('aria-current')});$('status').textContent=d.done?(s.phase==='interrupted'?'任务已中断 · 记录已保留':s.phase==='failed'?'执行未通过':s.phase.endsWith('rejected')?'已拒绝':s.gate_2_approved?'人工验收通过':'任务结束'):d.waiting?'等待你的审批':'正在执行';$('logs').textContent=d.logs.join('\n');$('error').textContent=s.errors.join('\n');$('report').textContent=JSON.stringify(s,null,2);$('approval').hidden=!d.waiting;$('start').disabled=!d.done;$('approve').disabled=false;$('reject').disabled=false;
 if(d.waiting){$('reject').textContent=d.waiting==='plan'?'拒绝此方案':'拒绝验收';$('approvalTitle').textContent=d.waiting==='plan'?'确认需求与方案':'确认应用预览';renderApproval(s,d.waiting);$('preview').hidden=d.waiting!=='preview';if(d.waiting==='preview')$('preview').href=s.preview_url}
 $('run-report').hidden=false;const a=s.acceptance_report;$('verification').hidden=!a;$('summary').textContent=a?a.summary:'';$('checks').replaceChildren();if(a)for(const c of a.checks){const li=document.createElement('li');li.textContent=c.id+' · '+({implemented:'已找到代码证据',missing:'缺失',uncertain:'待确认'}[c.status])+'\n'+c.reason+'\n'+c.file+(c.evidence?'\n'+c.evidence:'');$('checks').appendChild(li)}if(d.done){clearInterval(timer);sessionStorage.removeItem('factoryJob');refreshHistory()}}catch(e){$('error').textContent=e.message;clearInterval(timer);$('start').disabled=false}}
-$('request').onsubmit=async e=>{e.preventDefault();$('start').disabled=true;$('error').textContent='';try{const d=await api('/api/jobs',{idea:$('idea').value,requirements:$('requirements').value.split('\n').map(s=>s.trim()).filter(Boolean)});job=d.id;approvalKey='';$('execution').scrollIntoView({behavior:reducedMotion.matches?'instant':'smooth',block:'start'});sessionStorage.setItem('factoryJob',job);clearInterval(timer);await poll();if(!last?.done)timer=setInterval(poll,1500);refreshHistory()}catch(e){$('error').textContent=e.message;$('start').disabled=false}};
+$('request').onsubmit=async e=>{e.preventDefault();$('start').disabled=true;$('error').textContent='';try{const d=await api('/api/jobs',{idea:$('idea').value,requirements:$('requirements').value.split('\n').map(s=>s.trim()).filter(Boolean),...(revisionBase?{base_version:revisionBase}:{}),...(!revisionBase&&$("client-name").value.trim()?{client_name:$("client-name").value.trim()}:{})});job=d.id;approvalKey='';$('execution').scrollIntoView({behavior:reducedMotion.matches?'instant':'smooth',block:'start'});sessionStorage.setItem('factoryJob',job);clearInterval(timer);await poll();if(!last?.done)timer=setInterval(poll,1500);refreshHistory()}catch(e){$('error').textContent=e.message;$('start').disabled=false}};
 async function decide(approved){$('approve').disabled=true;$('reject').disabled=true;try{await api('/api/jobs/'+job+'/decision',{stage:waiting,approved,feedback:$('feedback').value});$('feedback').value='';await poll()}catch(e){$('error').textContent=e.message;$('approve').disabled=false;$('reject').disabled=false}}
 $('approve').onclick=()=>decide(true);$('reject').onclick=()=>decide(false);
 $('download').onclick=()=>{if(!last)return;const url=URL.createObjectURL(new Blob([JSON.stringify(last.state,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='factory-'+job+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
@@ -369,13 +374,31 @@ async function openHistory(ident,opener){
   $('history-decisions').textContent=(record.decisions||[]).map(d=>taskDate(d.at)+' · '+(d.stage==='plan'?'方案':'预览')+' · '+(d.approved?'批准':'拒绝')+'\n'+(d.feedback||'无附加反馈')).join('\n\n')||[state.gate_1_feedback,state.gate_2_feedback].filter(Boolean).join('\n')||'没有可用审批记录';
   renderApproval(state,'plan',$('history-plan'));
   $('history-resume').hidden=record.done;
+  $('history-edit').disabled=!record.done||!(state.generated_files||[]).length;
+  $('project-error').textContent='';$('project-meta').textContent='正在读取项目版本…';$('project-versions').replaceChildren();$('version-diff').replaceChildren();$('project-restore').hidden=true;
   $('history-preview-start').disabled=!record.done||!state.build_dir;
   const files=$('history-files');files.replaceChildren();
   for(const file of state.generated_files||[]){const detail=node('details');detail.appendChild(node('summary',file.path));let loaded=false;detail.addEventListener('toggle',()=>{if(detail.open&&!loaded){loaded=true;detail.appendChild(node('pre',file.content))}});files.appendChild(detail)}
-  hideCursor();historyDialog.append(particleCanvas,cursor);historyDialog.showModal();historyDialog.querySelector('.manual-body').scrollTop=0;
-  await refreshHistoryPreview();clearInterval(previewTimer);previewTimer=setInterval(refreshHistoryPreview,1800);
+  hideCursor();historyDialog.append(particleCanvas,cursor);if(!historyDialog.open)historyDialog.showModal();historyDialog.querySelector('.manual-body').scrollTop=0;
+  loadProject(record);
+  await refreshHistoryPreview();clearInterval(previewTimer);if(historyDialog.open)previewTimer=setInterval(refreshHistoryPreview,1800);
  }catch(error){$('history-error').textContent=error.message}
 }
+async function loadProject(record){
+ try{
+  const [project,changes]=await Promise.all([api('/api/projects/'+(record.state.workspace_id||record.id)),api('/api/jobs/'+record.id+'/changes')]);
+  if(historySelection?.id!==record.id||!historyDialog.open)return;
+  $('project-meta').textContent=project.title+' · 当前可用版本：'+(project.current_version||'尚无已验收版本')+(project.client?' · 客户：'+project.client:'');
+  $('history-edit').disabled=!record.done||!(record.state.generated_files||[]).length||Boolean(project.current_version&&project.current_version!==record.id);
+  $('project-restore').hidden=project.current_version===record.id||!record.state.gate_2_approved||!record.done;
+  for(const version of project.versions){const button=node('button',null,'history-row');button.type='button';button.append(node('strong','版本 '+version.number+(version.id===record.id?' · 正在查看':'')),node('small',taskStatuses[version.status]||version.status),node('small',taskDate(version.updated_at)),node('span','↗'));button.onclick=()=>openHistory(version.id,historyOpener);$('project-versions').appendChild(button)}
+  for(const file of changes.files){const detail=node('details');detail.append(node('summary',({added:'新增',modified:'修改',deleted:'删除'}[file.kind]||file.kind)+' · '+file.path),node('pre',file.diff+(file.truncated?'\n差异已截断，请下载源码查看完整内容。':'')));$('version-diff').appendChild(detail)}
+  if(!changes.files.length)$('version-diff').appendChild(node('p','此版本尚无源码差异。','muted'));
+ }catch(error){if(historySelection?.id===record.id)$('project-error').textContent='项目版本读取失败：'+error.message}
+}
+$('project-restore').onclick=async()=>{const record=historySelection;if(!record)return;$('project-restore').disabled=true;try{await api('/api/projects/'+(record.state.workspace_id||record.id)+'/restore',{version:record.id});await openHistory(record.id,historyOpener)}catch(error){$('project-error').textContent=error.message}finally{$('project-restore').disabled=false}};
+$('history-edit').onclick=()=>{const record=historySelection;if(!record)return;revisionBase=record.id;$('revision-context').hidden=false;$('revision-label').textContent='正在修改：'+$('history-title').textContent+' · 基于版本 '+record.id+'。原需求与源码会保留，请只描述本次修改。';$('idea').value='';$('requirements').value='';historyDialog.close();historyListDialog.close();$('idea').scrollIntoView({block:'center'});$('idea').focus()};
+$('revision-cancel').onclick=()=>{revisionBase=null;$('revision-context').hidden=true};
 async function refreshHistoryPreview(){
  if(!historySelection||!historyDialog.open)return;
  const ident=historySelection.id;

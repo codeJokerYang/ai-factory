@@ -36,6 +36,11 @@ class ProjectPhase(str, Enum):
 class ProjectState(BaseModel):
     project_id: str
     idea: str
+    workspace_id: Optional[str] = None  # Long-lived project; project_id remains the run ID.
+    base_version: Optional[str] = None
+    expected_version: Optional[str] = None
+    client_name: str = ""
+    change_requests: List[str] = Field(default_factory=list)
     requirements: List[str] = Field(default_factory=list)
     acceptance_report: Optional[AcceptanceReport] = None
     preview_ready: bool = False

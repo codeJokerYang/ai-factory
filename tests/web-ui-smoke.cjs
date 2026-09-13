@@ -36,6 +36,8 @@ const output = path.resolve('.factory/visual-review');
     await page.route('**/api/**', async route => {
       const request = route.request();
       const pathname=new URL(request.url()).pathname;
+      if(pathname==='/api/projects/archive-1')return route.fulfill({json:{id:'archive-1',title:'历史作品集',current_version:'archive-1',client:'测试客户',versions:[{id:'archive-1',number:1,status:'accepted',updated_at:archived.updated_at}],events:[]}});
+      if(pathname==='/api/jobs/archive-1/changes')return route.fulfill({json:{base_version:null,files:[{path:'app/page.tsx',kind:'added',diff:'+ export default function Page(){}'}]}});
       if(request.method()==='GET'&&pathname==='/api/jobs')return route.fulfill({json:{tasks:[{id:'archive-1',title:'历史作品集',status:'accepted',created_at:archived.created_at}],total:1}});
       if(pathname==='/api/jobs/archive-1/preview'){
         if(request.method()==='POST')archivedPreview=request.postDataJSON().action==='start'?{status:'ready',url:'http://127.0.0.1:54321',error:null}:{status:'stopped',url:null,error:null};
@@ -143,6 +145,7 @@ const output = path.resolve('.factory/visual-review');
     await page.screenshot({path:path.join(output,'history-list.png')});
     await page.locator('.history-row').first().click();
     await page.locator('#history-dialog').waitFor({state:'visible'});
+    await page.locator('#project-meta').filter({hasText:'当前可用版本'}).waitFor({state:'attached'});
     assert.equal(await page.locator('#history-idea').innerText(),archived.state.idea||'');
     assert.equal(await page.locator('#history-resume').isVisible(),false);
     await page.locator('#history-dialog').getByText('生成结果与重新预览',{exact:true}).click();
@@ -161,6 +164,16 @@ const output = path.resolve('.factory/visual-review');
     await page.locator('#history-download').click();
     const historyDownload=await historyDownloadEvent;
     assert.equal(JSON.parse(fs.readFileSync(await historyDownload.path(),'utf8')).id,'archive-1');
+    await page.locator('#project-details').evaluate(el=>el.open=true);
+    assert((await page.locator('#project-versions').innerText()).includes('版本 1'));
+    await page.locator('#history-edit').click();
+    assert(await page.locator('#revision-context').isVisible());
+    assert((await page.locator('#revision-label').innerText()).includes('archive-1'));
+    await page.locator('#revision-cancel').click();
+    assert.equal(await page.locator('#revision-context').isVisible(),false);
+    await page.locator('#open-history').click();
+    await page.locator('.history-row').first().click();
+    await page.locator('#history-dialog').waitFor({state:'visible'});
     await page.locator('#history-close').click();
     assert(await page.locator('#task-history').isVisible());
     await page.locator('#history-list-close').click();
@@ -203,6 +216,20 @@ const output = path.resolve('.factory/visual-review');
     const download = await downloadEvent;
     const report = JSON.parse(fs.readFileSync(await download.path(), 'utf8'));
     assert.equal(report.phase, 'plan_rejected');
+    await page.locator('#open-history').click();
+    await page.locator('#history-list .history-row').first().click();
+    await page.locator('#project-meta').filter({hasText:'当前可用版本'}).waitFor({state:'attached'});
+    await page.locator('#project-details').evaluate(el=>el.open=true);
+    for(const width of [1440,390]){
+      await page.setViewportSize({width,height:900});
+      await page.screenshot({path:path.join(output,`project-versions-${width}.png`)});
+    }
+    await page.locator('#history-edit').click();
+    await page.locator('#idea').fill('只修改页面标题，保留联系方式');
+    await page.locator('#start').click();
+    await page.waitForFunction(()=>document.getElementById('start').disabled===false);
+    assert.equal(submitted.base_version,'archive-1');
+    assert.equal(submitted.idea,'只修改页面标题，保留联系方式');
     assert.equal(errorCount, 0, `Unexpected browser errors: ${errors.slice(0, errorCount)}`);
     console.log('PASS: 11 responsive sizes with caption separation, triangle cursor and particle decay, sculpture click/drag/keyboard, manual independent scroll/open/Escape/focus, touch, reduced motion, original instructions, readable approval, inert model text, decision retry, report download.');
   } finally {await browser.close();}
