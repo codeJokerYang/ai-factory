@@ -23,6 +23,8 @@ class Agent(ABC):
 
     def complete(self, state, **kwargs):
         kwargs["prompt"] = with_instructions(state, kwargs["prompt"])
+        if state.delivery_mode:
+            kwargs['system'] += '\n当前为真实交付模式：禁止使用 mock、内存模拟或假成功提示冒充业务能力。外部服务缺失时明确说明不可交付，不进行演示降级。'
         return self.llm.complete(**kwargs)
 
     @abstractmethod

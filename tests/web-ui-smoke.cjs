@@ -33,12 +33,29 @@ const output = path.resolve('.factory/visual-review');
     let submitted, decision, rejectOnce = true;
     const archived={id:'archive-1',done:true,waiting:null,created_at:'2026-09-10T08:00:00Z',updated_at:'2026-09-10T09:00:00Z',logs:['历史日志'],decisions:[{stage:'plan',approved:true,feedback:'保留中文',at:'2026-09-10T08:10:00Z'}],state:{...state,phase:'gate_2_approved',gate_2_approved:true,build_dir:'generated/archive-1',generated_files:[{path:'app/page.tsx',content:'export default function Page(){return <main>作品集</main>}'}]}};
     let archivedPreview={status:'stopped',url:null,error:null};
+    archived.state.delivery_mode=true;
+    archived.state.project_id='archive-1';
+    archived.state.business_cases=[{name:'保存后刷新',steps:[{action:'text',target:'作品集'}]}];
+    archived.state.business_report={passed:true,cases:[{name:'保存后刷新',width:1440,steps:6,passed:true},{name:'保存后刷新',width:390,steps:6,passed:true}]};
+    archived.state.model_calls=[{run_id:'archive-1',model:'test',status:'completed',reserved_tokens:2000,input_tokens:100,output_tokens:200,cost:.0019,price:{currency:'CNY'}}];
+    let savedPrice=null,recoveries=0;
+    const interrupted={...archived,id:'interrupted',state:{...archived.state,workspace_id:'archive-1',phase:'interrupted',gate_2_approved:false}};
     await page.route('**/api/**', async route => {
       const request = route.request();
       const pathname=new URL(request.url()).pathname;
+      if(pathname==='/api/prices'){
+        if(request.method()==='POST'){savedPrice=request.postDataJSON();return route.fulfill({json:savedPrice})}
+        return route.fulfill({json:{workflow_version:2,model:'test',prices:{}}});
+      }
+      if(pathname==='/api/costs')return route.fulfill({json:{estimated:{CNY:.0019},calls:1,unpriced_calls:0,legacy_tasks_without_usage:0}});
+      if(pathname==='/api/jobs/interrupted')return route.fulfill({json:interrupted});
+      if(pathname==='/api/jobs/interrupted/changes')return route.fulfill({json:{files:[]}});
+      if(pathname==='/api/jobs/interrupted/preview')return route.fulfill({json:{status:'stopped'}});
+      if(pathname==='/api/jobs/interrupted/resume'){recoveries++;return route.fulfill({json:{id:'visual-test'}})}
+      if(pathname==='/api/jobs/archive-1/bundle')return route.fulfill({contentType:'application/zip',body:Buffer.from('504b0506000000000000000000000000000000000000','hex')});
       if(pathname==='/api/projects/archive-1')return route.fulfill({json:{id:'archive-1',title:'历史作品集',current_version:'archive-1',client:'测试客户',versions:[{id:'archive-1',number:1,status:'accepted',updated_at:archived.updated_at}],events:[]}});
       if(pathname==='/api/jobs/archive-1/changes')return route.fulfill({json:{base_version:null,files:[{path:'app/page.tsx',kind:'added',diff:'+ export default function Page(){}'}]}});
-      if(request.method()==='GET'&&pathname==='/api/jobs')return route.fulfill({json:{tasks:[{id:'archive-1',title:'历史作品集',status:'accepted',created_at:archived.created_at}],total:1}});
+      if(request.method()==='GET'&&pathname==='/api/jobs')return route.fulfill({json:{tasks:[{id:'archive-1',title:'历史作品集',status:'accepted',created_at:archived.created_at},{id:'interrupted',title:'中断的测试任务',status:'interrupted',created_at:archived.created_at}],total:2}});
       if(pathname==='/api/jobs/archive-1/preview'){
         if(request.method()==='POST')archivedPreview=request.postDataJSON().action==='start'?{status:'ready',url:'http://127.0.0.1:54321',error:null}:{status:'stopped',url:null,error:null};
         return route.fulfill({json:archivedPreview});
@@ -57,6 +74,7 @@ const output = path.resolve('.factory/visual-review');
       return route.fulfill({json: snapshot});
     });
     await page.goto(base, {waitUntil: 'networkidle'});
+    await page.locator('#delivery-mode').selectOption('demo');
     await page.waitForTimeout(1800);
     // Include wide/short windows and CSS viewport sizes typical of browser zoom.
     for (const [width, height] of [[2558,1358],[2048,1086],[1920,900],[1536,720],[1366,650],[1280,720],[1024,600],[853,480],[1440,960],[768,1024],[390,844]]) {
@@ -148,6 +166,16 @@ const output = path.resolve('.factory/visual-review');
     await page.locator('#project-meta').filter({hasText:'当前可用版本'}).waitFor({state:'attached'});
     assert.equal(await page.locator('#history-idea').innerText(),archived.state.idea||'');
     assert.equal(await page.locator('#history-resume').isVisible(),false);
+    assert((await page.locator('#history-cost').textContent()).includes('CNY 0.001900'));
+    await page.locator('#history-dialog').getByText('费用开销与业务测试',{exact:true}).click();
+    for(const width of [1440,390]){
+      await page.setViewportSize({width,height:900});
+      await page.locator('#history-cost').scrollIntoViewIfNeeded();
+      await page.screenshot({path:path.join(output,`cost-business-${width}.png`)});
+      assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    }
+    const bundleEvent=page.waitForEvent('download');await page.locator('#history-bundle').click();
+    assert.equal((await bundleEvent).suggestedFilename(),'delivery-archive-1.zip');
     await page.locator('#history-dialog').getByText('生成结果与重新预览',{exact:true}).click();
     await page.locator('#history-preview-start').click();
     await page.locator('#history-preview-link').waitFor({state:'visible'});
@@ -170,6 +198,7 @@ const output = path.resolve('.factory/visual-review');
     assert(await page.locator('#revision-context').isVisible());
     assert((await page.locator('#revision-label').innerText()).includes('archive-1'));
     await page.locator('#revision-cancel').click();
+    await page.locator('#delivery-mode').selectOption('demo');
     assert.equal(await page.locator('#revision-context').isVisible(),false);
     await page.locator('#open-history').click();
     await page.locator('.history-row').first().click();
@@ -230,6 +259,13 @@ const output = path.resolve('.factory/visual-review');
     await page.waitForFunction(()=>document.getElementById('start').disabled===false);
     assert.equal(submitted.base_version,'archive-1');
     assert.equal(submitted.idea,'只修改页面标题，保留联系方式');
+    await page.getByText('模型单价与费用口径',{exact:true}).click();
+    await page.locator('#price-model').fill('test');await page.locator('#price-input').fill('2');await page.locator('#price-output').fill('8');
+    await page.locator('#price-save').click();await page.locator('#price-status').filter({hasText:'已保存'}).waitFor();
+    assert.equal(savedPrice.input_per_million,2);
+    await page.locator('#open-history').click();await page.locator('#history-list').getByRole('button',{name:/中断的测试任务/}).click();
+    await page.locator('#history-recover').click();await page.waitForFunction(()=>document.getElementById('history-dialog').open===false);
+    assert.equal(recoveries,1);
     assert.equal(errorCount, 0, `Unexpected browser errors: ${errors.slice(0, errorCount)}`);
     console.log('PASS: 11 responsive sizes with caption separation, triangle cursor and particle decay, sculpture click/drag/keyboard, manual independent scroll/open/Escape/focus, touch, reduced motion, original instructions, readable approval, inert model text, decision retry, report download.');
   } finally {await browser.close();}

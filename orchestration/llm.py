@@ -39,16 +39,22 @@ class AnthropicLLM:
         else:
             kwargs["api_key"] = api_key or os.environ.get(config.API_KEY_ENV)
         self._client = Anthropic(**kwargs)
+        self.last_usage = None
 
     def complete(
         self, *, model: str, system: str, prompt: str, max_tokens: int = config.MAX_TOKENS
     ) -> str:
+        self.last_usage = None
         resp = self._client.messages.create(
             model=model,
             max_tokens=max_tokens,
             system=system,
             messages=[{"role": "user", "content": prompt}],
         )
+        usage = getattr(resp, 'usage', None)
+        self.last_usage = dict(input_tokens=getattr(usage, 'input_tokens', None), output_tokens=getattr(usage, 'output_tokens', None),
+                               cache_read_input_tokens=getattr(usage, 'cache_read_input_tokens', None),
+                               cache_creation_input_tokens=getattr(usage, 'cache_creation_input_tokens', None))
         return "".join(
             block.text for block in resp.content if getattr(block, "type", None) == "text"
         )

@@ -41,6 +41,8 @@ def with_instructions(state, prompt):
     contract = {
         "original_request": state.idea,
         "requested_change_history": state.change_requests,
+        "business_tests": [c.model_dump() for c in state.business_cases],
+        "delivery_mode": state.delivery_mode,
         "requirements": {f"R{i + 1}": item for i, item in enumerate(state.requirements)},
     }
     return (

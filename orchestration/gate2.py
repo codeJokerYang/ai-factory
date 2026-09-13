@@ -60,6 +60,11 @@ def make_gate_2(approver: Optional[Approver] = None) -> Step:
         if state.phase == ProjectPhase.FAILED:
             return state
         state.gate_2_approved = False
+        from .business import business_passed
+        if state.delivery_mode and not business_passed(state):
+            state.errors.append('gate2: 真实业务测试必须全部通过')
+            state.phase = ProjectPhase.FAILED
+            return state
         if (state.build_passed is not True or not state.preview_ready
                 or state.code_review is None or not state.code_review.passed
                 or state.security_report is None or not state.security_report.passed

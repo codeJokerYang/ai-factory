@@ -30,6 +30,7 @@
 @media(max-width:780px){.masthead{padding-top:23px}.local-label{display:none}.masthead nav{gap:24px}.hero{min-height:790px;max-height:1050px}.hero-kicker,.edition{top:108px;font-size:8px}.display-word{top:25%;font-size:20vw;letter-spacing:-.09em}.art-parallax{top:37%;width:min(69vw,490px)}.hero-copy{bottom:164px}.hero-copy h1{font-size:28px}.hero-copy p{max-width:290px}.material-index{top:37%;font-size:8px}.hero-bottom{bottom:25px}.hero-bottom .scroll-note{align-self:flex-end;font-size:8px;gap:12px}.workbench{padding-top:65px}.workbench-heading{display:block;margin-bottom:38px}.workbench-heading p{margin-top:22px;max-width:350px}.steps{gap:14px;margin-bottom:42px}.steps li{gap:9px;font-size:10px}.workspace-grid{grid-template-columns:1fr;gap:60px}.section-heading h3{font-size:22px}.execution-section{border-top:1px solid var(--line);padding-top:32px}.idle-space{min-height:190px}.footer{margin-top:64px}.section-topline{margin-bottom:24px}}
 @media(max-width:480px){.hero{height:100svh;min-height:760px}.wordmark{font-size:17px}.wordmark svg{width:19px}.masthead nav{gap:19px}.masthead nav a{font-size:10px}.masthead nav a:nth-child(2){display:none}.hero-kicker{top:106px;max-width:180px}.edition{font-size:8px}.display-word{top:26%;font-size:20vw;letter-spacing:-.095em}.art-parallax{width:90vw;top:37%}.hero-copy{bottom:155px;max-width:290px}.hero-copy h1{font-size:27px;letter-spacing:-1px;margin-bottom:8px}.hero-copy p{font-size:11px;max-width:235px}.hero-copy .text-link{margin-top:10px}.material-index{right:19px;top:40%}.hero-bottom{align-items:flex-end;gap:10px}.scroll-note{max-width:92px;line-height:1.8}.workbench-heading h2{font-size:32px;letter-spacing:-1.5px}.section-topline{font-size:8px}.steps{gap:10px}.steps li{display:block;font-size:10px;line-height:1.8}.steps b{display:block;margin-bottom:4px}.footer{font-size:9px;flex-wrap:wrap}.plan-intro strong{font-size:22px}.decision-actions{gap:20px}.decision-actions .primary{gap:18px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{animation:none!important;transition:none!important}.art-parallax{transform:none!important}}
+.execution-options input,.execution-options select{width:100%;padding:9px 0;background:transparent;border:0;border-bottom:1px solid var(--line);color:var(--ink);font:inherit;border-radius:0}.budget-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.cost-summary{font-size:12px;line-height:1.9;color:var(--muted);white-space:pre-wrap;margin:12px 0}.cost-summary::first-line{font-size:16px;color:var(--ink)}.business-results{font-size:12px;line-height:1.9;white-space:pre-wrap}.execution-options label{margin-top:15px}
 </style>
 <style>
 /* Precise pointer tip with a restrained, finite particle trail. */
@@ -120,8 +121,8 @@
  <details><summary>02 / 确认方案：先定范围，再生成</summary><p>在“执行与验收”查看产品摘要、核心功能、本次会做和暂不做的内容。实施计划、风险与技术方案可按需展开，不需要阅读 JSON。</p><p>点击<strong>批准并继续</strong>后才开始生成代码。方案不合适时，填写反馈并拒绝；当前任务会结束，你可以调整需求后重新提交。</p></details>
  <details><summary>03 / 观察实现：查看进度、日志与检查</summary><p>状态栏显示执行阶段，“执行日志”展示实际进度。生成过程中包含安全检查、构建验证和代码审查；修复后会再次检查最终代码。</p><p>“指令核对”显示每条要求的代码证据。缺失、不确定或检查失败会阻止通过验收。遇到错误，请结合日志和运行报告定位原因。</p></details>
  <details><summary>04 / 预览验收：亲手操作，再决定</summary><p>进入预览审批阶段后，点击<strong>打开应用预览</strong>，实际检查页面、主要操作和数据保存。代码证据不等于业务测试，不能只看“已实现”就判断完成。</p><p>确认符合预期后批准；不符合时填写反馈并拒绝。批准或拒绝后，本次临时预览服务会停止。</p></details>
- <details><summary>05 / 保存结果：下载报告与恢复查看</summary><p>任务开始后可展开“完整运行报告”，查看和下载 JSON。报告包含需求、检查结果和错误信息；磁盘报告位于项目的 <strong>.factory/runs/&lt;任务编号&gt;/report.json</strong>，生成代码保存在独立目录。</p><p>同一浏览器会话刷新页面后可继续查询当前任务。Python 服务重启后未完成任务会标记为已中断，可在“本地任务”中回看详情；已生成应用可按需重新启动历史预览。报告可能包含源码和需求，请谨慎分享。</p></details>
- <details><summary>06 / 能力边界：适合什么，尚不支持什么</summary><p>目前面向 <strong>Next.js 应用</strong>，使用本地配置的模型凭据（可配置 DeepSeek）。生成代码会在本机安装依赖和运行，尚无容器隔离。</p><p>目前不提供自动生产发布、服务重启后的任务恢复、完整业务端到端测试或按 DAG 增量执行。检查通过不等于上线认证。审批等待超过 30 分钟会超时结束。</p></details>
+ <details><summary>05 / 保存结果：下载报告与恢复查看</summary><p>任务开始后可展开“完整运行报告”，查看和下载 JSON。报告包含需求、检查结果和错误信息；磁盘报告位于项目的 <strong>.factory/runs/&lt;任务编号&gt;/report.json</strong>，生成代码保存在独立目录。</p><p>同一浏览器会话刷新页面后可继续查询当前任务。Python 服务重启后未完成任务标记为已中断，可在“本地任务”中恢复到新任务；已生成应用可重新启动历史预览，交付验证通过后可下载交付包。报告可能包含源码和需求，请谨慎分享。</p></details>
+ <details><summary>06 / 能力边界：适合什么，尚不支持什么</summary><p>目前面向 <strong>Next.js 应用</strong>，使用本地配置的模型凭据（可配置 DeepSeek）。生成代码会在本机安装依赖和运行，尚无容器隔离。</p><p>失败或中断任务可以从成功检查点恢复，并重新审批与检查。交付模式运行你配置的真实浏览器业务测试，预算和费用在执行区查看。目前不自动生产发布、不提供执行沙箱或按 DAG 增量执行。测试通过不等于全部业务或生产安全已验证。</p></details>
  </div>
  <button class="primary manual-start" id="manual-start" type="button">明白了，开始写需求 ↗</button>
  <p class="manual-footnote">此说明不会启动任务。只有提交工作台里的需求，才会调用模型。</p>
@@ -139,6 +140,20 @@
         <label for="idea">你的需求</label><textarea id="idea" rows="5" required maxlength="30000" placeholder="例如：做一个中文任务管理工具，可以新增、完成和筛选任务。刷新后数据仍然保留，不需要登录。"></textarea>
         <label for="requirements">必须满足的要求<span class="optional">选填 · 每行一条</span></label><textarea id="requirements" rows="3" placeholder="全部界面使用中文&#10;刷新页面后保留任务&#10;不使用模拟数据冒充持久化"></textarea>
         <details class="environment-note"><summary>关联客户（选填）</summary><label for="client-name">客户或业务名称</label><textarea id="client-name" rows="1" maxlength="120" placeholder="例如：某工作室。修改已有项目时沿用原客户。"></textarea></details>
+        <details class="environment-note execution-options" open><summary>交付检查与执行预算</summary>
+          <label for="delivery-mode">执行方式</label><select id="delivery-mode"><option value="delivery">交付验证 · 运行真实业务测试</option><option value="demo">原型探索 · 不作为交付通过</option></select>
+          <label for="business-scenario">业务验收步骤</label><textarea id="business-scenario" rows="4" placeholder="访问 /&#10;填写 姓名=张三&#10;点击 保存&#10;应显示 保存成功&#10;刷新&#10;字段 姓名=张三"></textarea>
+          <p class="muted">每行一个步骤，最多 20 步。支持访问、填写、点击、应显示、刷新、字段。交付验证至少需要一条结果断言，在桌面和手机分别执行。</p>
+          <div class="budget-grid"><div><label for="max-calls">最多模型调用</label><input id="max-calls" type="number" min="1" max="100" value="20"></div><div><label for="max-tokens">Token 预留上限</label><input id="max-tokens" type="number" min="1000" max="2000000" value="250000"></div><div><label for="max-cost">金额预算（选填）</label><input id="max-cost" type="number" min="0.000001" step="any" placeholder="留空仅限制调用与 token"></div><div><label for="budget-currency">预算币种</label><select id="budget-currency"><option value="CNY">人民币 CNY</option><option value="USD">美元 USD</option></select></div></div>
+          <p class="muted">Token 采用保守预留，达到预算前停止新增调用。金额预算需配置单价，不是供应商扣款的硬限额。恢复任务累计计算历史调用。</p>
+        </details>
+        <details class="environment-note execution-options"><summary>模型单价与费用口径</summary>
+          <label for="price-model">模型名称（精确匹配）</label><input id="price-model" maxlength="100" placeholder="读取当前模型…">
+          <label for="price-currency">计价币种</label><select id="price-currency"><option value="CNY">人民币 CNY</option><option value="USD">美元 USD</option></select>
+          <div class="budget-grid"><div><label for="price-input">输入 / 百万 token</label><input id="price-input" type="number" min="0" step="any"></div><div><label for="price-output">输出 / 百万 token</label><input id="price-output" type="number" min="0" step="any"></div></div>
+          <button id="price-save" type="button" class="secondary">保存此模型单价</button><p id="price-status" class="muted" role="status"></p>
+          <p class="muted">按供应商账户价格填写。缓存输入按统一输入单价估算，旧调用保留当时单价；未配置不计为零元。<a href="https://api-docs.deepseek.com/quick_start/pricing/" target="_blank" rel="noopener">查看 DeepSeek 官方价格 ↗</a></p>
+        </details>
         <details class="environment-note"><summary>本地运行说明</summary><p class="muted">支持 Next.js 应用。模型凭据从本地环境读取，请勿填写在需求中。生成代码在本机安装依赖和运行，尚无容器隔离。</p></details>
         <button id="start" class="primary" type="submit"><span>开始执行</span><span aria-hidden="true">↗</span></button>
       </form>
@@ -147,6 +162,8 @@
     <section class="execution-section" id="execution" aria-labelledby="execution-title">
       <div class="section-heading"><h3 id="execution-title">执行与验收</h3><span>THE PROCESS</span></div>
       <div id="status" class="status" aria-live="polite">等待你的第一条指令</div>
+      <div id="cost-summary" class="cost-summary" aria-live="polite">费用：尚无调用；未配置单价时显示未计价。</div>
+      <div id="business-results" class="business-results"></div>
       <div class="idle-space"><span class="idle-symbol" aria-hidden="true">↗</span><p>创作尚未开始。<br>提交需求后，方案将在这里展开。</p></div>
       <details class="log-details"><summary>执行日志</summary><pre id="logs">提交后，这里会展示实际执行进度。</pre></details>
       <div id="approval" hidden>
@@ -171,6 +188,7 @@
   <div class="manual-body" tabindex="0" role="region" aria-label="历史任务列表">
     <div class="history-heading"><h2 id="history-heading">本地任务</h2><button class="secondary" id="history-refresh" type="button">刷新记录 ↻</button></div>
     <p class="muted">每次需求、方案、执行记录和生成结果，都保存在本机。关闭浏览器后，也可以回来继续查看。</p>
+    <p class="cost-summary" id="all-costs">正在读取累计开销…</p>
     <div id="history-error" class="error" role="alert"></div><div id="history-list" class="history-list" aria-live="polite"></div>
     <div class="history-paging"><button class="secondary" id="history-prev" type="button">上一页</button><span id="history-count"></span><button class="secondary" id="history-next" type="button">下一页</button></div>
   </div>
@@ -182,6 +200,8 @@
   <div class="manual-body" tabindex="0" role="region" aria-label="任务详情正文">
     <h2 id="history-title"></h2><p class="muted" id="history-meta"></p>
     <div class="history-actions"><button class="secondary" type="button" id="history-edit">继续修改这个项目 ↗</button></div>
+    <div class="history-actions"><button class="secondary" type="button" id="history-recover" hidden>从完成的检查点恢复任务 ↗</button><button class="secondary" type="button" id="history-bundle" hidden>下载验证交付包 ↓</button></div>
+    <details><summary>费用开销与业务测试</summary><div id="history-cost" class="cost-summary"></div><div id="history-business" class="business-results"></div><p class="muted">恢复会保留原记录，并重新检查与审批。默认沿用原预算；在工作台修改预算后可按新上限恢复。交付包不代表已经上线。</p></details>
     <details id="project-details"><summary>项目版本与修改差异</summary><p class="muted" id="project-meta"></p><div id="project-versions"></div><button type="button" class="secondary" id="project-restore" hidden>恢复此版本为当前版本</button><p class="muted">恢复只切换项目版本，不部署、不改写原目录。失败版本不会替换已验收版本。</p><div id="version-diff"></div><p class="error" id="project-error" role="alert"></p></details>
     <h3>原始需求</h3><div class="history-data" id="history-idea"></div>
     <div class="history-actions"><button class="primary" id="history-resume" type="button" hidden>回到执行与审批 ↗</button><button class="secondary" id="history-download" type="button">下载完整任务记录 ↓</button></div>
@@ -298,6 +318,39 @@ const token='__TOKEN__';let job=null,timer=null,last=null,waiting=null,revisionB
 const $=id=>document.getElementById(id);
 async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',headers:{'X-Factory-Token':token,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});const d=await r.json();if(!r.ok)throw Error(d.error||'请求失败');return d}
 // Render model output as text nodes: never interpret generated HTML.
+let policyDirty=false,priceProfiles={},revisionCases=[],backendReady=false;
+for(const id of ['max-calls','max-tokens','max-cost','budget-currency'])$(id).addEventListener('input',()=>policyDirty=true);
+function limitsInput(){return {max_calls:Number($('max-calls').value),max_tokens:Number($('max-tokens').value),max_cost:$('max-cost').value?Number($('max-cost').value):null,currency:$('budget-currency').value}}
+function executionOptions(){
+ if(!backendReady)throw Error('新版执行后端尚未就绪，请更新服务并刷新页面，避免跳过预算和业务检查');
+ const options=policyDirty?{limits:limitsInput()}:{};
+ if($('delivery-mode').value==='delivery'){
+  if(revisionBase&&!$('business-scenario').value.trim()&&revisionCases.length){options.delivery_mode=true;options.business_cases=revisionCases;return options}
+  const steps=$('business-scenario').value.split('\n').map(s=>s.trim()).filter(Boolean).map(line=>{
+   if(line==='刷新')return {action:'reload'};
+   const match=line.match(/^(访问|填写|点击|应显示|字段)\s+(.+)$/);if(!match)throw Error('无法识别测试步骤：'+line);
+   const names={'访问':'visit','填写':'fill','点击':'click','应显示':'text','字段':'value'};const action=names[match[1]];
+   if(['fill','value'].includes(action)){const split=match[2].indexOf('=');if(split<1)throw Error('填写/字段格式为：标签=内容');return {action,target:match[2].slice(0,split).trim(),value:match[2].slice(split+1)}}
+   return {action,target:match[2]};
+  });
+  if(!steps.length||steps.length>20||!steps.some(s=>['text','value'].includes(s.action)))throw Error('请填写 1–20 步业务测试，至少包含“应显示”或“字段”结果断言');
+  options.delivery_mode=true;options.business_cases=[{name:'用户业务验收',steps}];
+ }
+ return options;
+}
+function moneyText(calls){const totals={};for(const c of calls)if(c.cost!=null&&c.price){totals[c.price.currency]=(totals[c.price.currency]||0)+c.cost}const unknown=calls.filter(c=>c.cost==null).length;return (Object.entries(totals).map(([currency,value])=>currency+' '+value.toFixed(6)).join(' / ')||'未计价')+(unknown?' · '+unknown+' 次用量或单价未完整':'')}
+function renderExecution(state,cost,business){
+ const calls=state.model_calls||[],current=calls.filter(c=>c.run_id===state.project_id),limits=state.limits;
+ cost.textContent=calls.length?'本次费用估算：'+moneyText(current)+'\n恢复链累计估算：'+moneyText(calls)+'\n调用 '+calls.length+' 次 · 已报告输入/输出 token '+calls.reduce((n,c)=>n+(c.input_tokens||0)+(c.output_tokens||0)+(c.cache_read_input_tokens||0)+(c.cache_creation_input_tokens||0),0)+'\n按配置单价估算，缓存按统一输入价；不是供应商实收。':'此记录尚无模型用量数据，不能计为已花费 0 元。';
+ if(limits){cost.textContent+='\n调用余量 '+Math.max(0,limits.max_calls-calls.length)+' 次 · token 预留余量 '+Math.max(0,limits.max_tokens-calls.reduce((n,c)=>n+c.reserved_tokens,0));if(limits.max_cost!=null)cost.textContent+='\n金额预算：'+limits.currency+' '+limits.max_cost}
+ if(limits?.max_cost!=null){const known=calls.every(c=>c.price?.currency===limits.currency&&typeof(c.cost??c.reserved_cost)==='number');cost.textContent+='\n按预留计算的剩余预算：'+(known?limits.currency+' '+Math.max(0,limits.max_cost-calls.reduce((n,c)=>n+(c.cost??c.reserved_cost),0)).toFixed(6):'未知（含未计价或其他币种调用）')}
+ const report=state.business_report;business.textContent=report?(report.passed?'业务测试通过':'业务测试未通过')+(report.error?'\n'+report.error:'')+'\n'+(report.cases||[]).map(c=>(c.passed?'通过':'失败')+' · '+c.name+' · '+c.width+'px'+(c.error?'\n'+c.error:'')).join('\n'):(state.delivery_mode?'业务测试尚未运行':'原型模式：尚未验证真实业务流程');
+}
+async function loadPrices(){try{const data=await api('/api/prices');backendReady=data.workflow_version===2;priceProfiles=data.prices||{};if(data.model)$('price-model').value=data.model;showPrice()}catch(error){$('price-status').textContent='单价读取失败：'+error.message}}
+function showPrice(){const price=priceProfiles[$('price-model').value];$('price-input').value=price?.input_per_million??'';$('price-output').value=price?.output_per_million??'';if(price)$('price-currency').value=price.currency;$('price-status').textContent=price?'已保存单价，后续任务按此估算。':'此模型未配置单价，费用显示未计价。'}
+$('price-model').onchange=showPrice;
+$('price-save').onclick=async()=>{try{if(!$('price-input').value||!$('price-output').value)throw Error('请填写输入和输出单价');const price=await api('/api/prices',{model:$('price-model').value.trim(),currency:$('price-currency').value,input_per_million:Number($('price-input').value),output_per_million:Number($('price-output').value)});priceProfiles[price.model]=price;showPrice()}catch(error){$('price-status').textContent=error.message}};
+loadPrices();
 let approvalKey='';
 function node(tag,text,cls){const el=document.createElement(tag);if(text!=null)el.textContent=String(text);if(cls)el.className=cls;return el}
 function renderApproval(state,stage,root=$('plan')){
@@ -318,6 +371,7 @@ function renderApproval(state,stage,root=$('plan')){
  intro.appendChild(node('p',spec.one_liner||'尚未提供产品说明'));
  if(spec.target_users)intro.appendChild(node('p','面向用户：'+spec.target_users,'muted'));
  list('你的必须满足项',state.requirements);
+ if(state.delivery_mode)list('业务测试 · 桌面与手机分别执行',(state.business_cases||[]).map(c=>c.name+'：'+c.steps.map(s=>({'visit':'访问','click':'点击','fill':'填写','text':'应显示','value':'字段','reload':'刷新'}[s.action])+(s.target?' '+s.target:'')+(['fill','value'].includes(s.action)?'='+s.value:'')).join(' → ')),true);
  list('核心功能',spec.core_features);
  list('本次会做',spec.mvp_in_scope);
  list('本次暂不做 · 请确认是否符合预期',spec.mvp_out_of_scope);
@@ -337,10 +391,10 @@ function renderApproval(state,stage,root=$('plan')){
  root.appendChild(detail);
  if(root===$('plan'))section('批准前请确认').appendChild(node('p','功能范围是否完整？“本次暂不做”是否遗漏了必要功能？确认后将开始生成代码。若方案不符，请填写反馈并拒绝。','muted'));
 }
-async function poll(){try{const d=await api('/api/jobs/'+job);last=d;waiting=d.waiting;const s=d.state;document.body.classList.add('busy');const step=s.gate_2_approved||d.waiting==='preview'?3:d.waiting==='plan'?1:s.build_dir?2:1;document.querySelectorAll('.steps li').forEach((el,i)=>{el.classList.toggle('active',i===step);el.classList.toggle('done',i<step);if(i===step)el.setAttribute('aria-current','step');else el.removeAttribute('aria-current')});$('status').textContent=d.done?(s.phase==='interrupted'?'任务已中断 · 记录已保留':s.phase==='failed'?'执行未通过':s.phase.endsWith('rejected')?'已拒绝':s.gate_2_approved?'人工验收通过':'任务结束'):d.waiting?'等待你的审批':'正在执行';$('logs').textContent=d.logs.join('\n');$('error').textContent=s.errors.join('\n');$('report').textContent=JSON.stringify(s,null,2);$('approval').hidden=!d.waiting;$('start').disabled=!d.done;$('approve').disabled=false;$('reject').disabled=false;
+async function poll(){try{const d=await api('/api/jobs/'+job);last=d;waiting=d.waiting;const s=d.state;renderExecution(s,$("cost-summary"),$("business-results"));document.body.classList.add('busy');const step=s.gate_2_approved||d.waiting==='preview'?3:d.waiting==='plan'?1:s.build_dir?2:1;document.querySelectorAll('.steps li').forEach((el,i)=>{el.classList.toggle('active',i===step);el.classList.toggle('done',i<step);if(i===step)el.setAttribute('aria-current','step');else el.removeAttribute('aria-current')});$('status').textContent=d.done?(s.phase==='interrupted'?'任务已中断 · 记录已保留':s.phase==='failed'?'执行未通过':s.phase.endsWith('rejected')?'已拒绝':s.gate_2_approved?'人工验收通过':'任务结束'):d.waiting?'等待你的审批':'正在执行';$('logs').textContent=d.logs.join('\n');$('error').textContent=s.errors.join('\n');$('report').textContent=JSON.stringify(s,null,2);$('approval').hidden=!d.waiting;$('start').disabled=!d.done;$('approve').disabled=false;$('reject').disabled=false;
 if(d.waiting){$('reject').textContent=d.waiting==='plan'?'拒绝此方案':'拒绝验收';$('approvalTitle').textContent=d.waiting==='plan'?'确认需求与方案':'确认应用预览';renderApproval(s,d.waiting);$('preview').hidden=d.waiting!=='preview';if(d.waiting==='preview')$('preview').href=s.preview_url}
 $('run-report').hidden=false;const a=s.acceptance_report;$('verification').hidden=!a;$('summary').textContent=a?a.summary:'';$('checks').replaceChildren();if(a)for(const c of a.checks){const li=document.createElement('li');li.textContent=c.id+' · '+({implemented:'已找到代码证据',missing:'缺失',uncertain:'待确认'}[c.status])+'\n'+c.reason+'\n'+c.file+(c.evidence?'\n'+c.evidence:'');$('checks').appendChild(li)}if(d.done){clearInterval(timer);sessionStorage.removeItem('factoryJob');refreshHistory()}}catch(e){$('error').textContent=e.message;clearInterval(timer);$('start').disabled=false}}
-$('request').onsubmit=async e=>{e.preventDefault();$('start').disabled=true;$('error').textContent='';try{const d=await api('/api/jobs',{idea:$('idea').value,requirements:$('requirements').value.split('\n').map(s=>s.trim()).filter(Boolean),...(revisionBase?{base_version:revisionBase}:{}),...(!revisionBase&&$("client-name").value.trim()?{client_name:$("client-name").value.trim()}:{})});job=d.id;approvalKey='';$('execution').scrollIntoView({behavior:reducedMotion.matches?'instant':'smooth',block:'start'});sessionStorage.setItem('factoryJob',job);clearInterval(timer);await poll();if(!last?.done)timer=setInterval(poll,1500);refreshHistory()}catch(e){$('error').textContent=e.message;$('start').disabled=false}};
+$('request').onsubmit=async e=>{e.preventDefault();$('start').disabled=true;$('error').textContent='';try{const d=await api('/api/jobs',{idea:$('idea').value,requirements:$('requirements').value.split('\n').map(s=>s.trim()).filter(Boolean),...executionOptions(),...(revisionBase?{base_version:revisionBase}:{}),...(!revisionBase&&$("client-name").value.trim()?{client_name:$("client-name").value.trim()}:{})});job=d.id;approvalKey='';$('execution').scrollIntoView({behavior:reducedMotion.matches?'instant':'smooth',block:'start'});sessionStorage.setItem('factoryJob',job);clearInterval(timer);await poll();if(!last?.done)timer=setInterval(poll,1500);refreshHistory()}catch(e){$('error').textContent=e.message;$('start').disabled=false}};
 async function decide(approved){$('approve').disabled=true;$('reject').disabled=true;try{await api('/api/jobs/'+job+'/decision',{stage:waiting,approved,feedback:$('feedback').value});$('feedback').value='';await poll()}catch(e){$('error').textContent=e.message;$('approve').disabled=false;$('reject').disabled=false}}
 $('approve').onclick=()=>decide(true);$('reject').onclick=()=>decide(false);
 $('download').onclick=()=>{if(!last)return;const url=URL.createObjectURL(new Blob([JSON.stringify(last.state,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='factory-'+job+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
@@ -349,6 +403,7 @@ const historyDialog=$('history-dialog');let historyOffset=0,historySelection=nul
 const taskStatuses={running:'执行中',waiting_plan:'等待方案审批',waiting_preview:'等待预览验收',interrupted:'已中断',failed:'执行未通过',rejected:'已拒绝',accepted:'人工验收通过',completed:'任务结束'};
 function taskDate(value){const date=new Date(value);return Number.isNaN(date.valueOf())?'日期未知':date.toLocaleString('zh-CN',{hour12:false})}
 async function refreshHistory(){
+ refreshAllCosts();
  try{
   const data=await api('/api/jobs?offset='+historyOffset+'&limit=30');
   const rows=data.tasks||[];const list=$('history-list');list.replaceChildren();
@@ -374,6 +429,9 @@ async function openHistory(ident,opener){
   $('history-decisions').textContent=(record.decisions||[]).map(d=>taskDate(d.at)+' · '+(d.stage==='plan'?'方案':'预览')+' · '+(d.approved?'批准':'拒绝')+'\n'+(d.feedback||'无附加反馈')).join('\n\n')||[state.gate_1_feedback,state.gate_2_feedback].filter(Boolean).join('\n')||'没有可用审批记录';
   renderApproval(state,'plan',$('history-plan'));
   $('history-resume').hidden=record.done;
+  $('history-recover').hidden=!record.done||!['failed','interrupted'].includes(state.phase);
+  $('history-bundle').hidden=!record.done||!state.delivery_mode||!state.gate_2_approved||!state.business_report?.passed;
+  renderExecution(state,$('history-cost'),$('history-business'));
   $('history-edit').disabled=!record.done||!(state.generated_files||[]).length;
   $('project-error').textContent='';$('project-meta').textContent='正在读取项目版本…';$('project-versions').replaceChildren();$('version-diff').replaceChildren();$('project-restore').hidden=true;
   $('history-preview-start').disabled=!record.done||!state.build_dir;
@@ -384,6 +442,7 @@ async function openHistory(ident,opener){
   await refreshHistoryPreview();clearInterval(previewTimer);if(historyDialog.open)previewTimer=setInterval(refreshHistoryPreview,1800);
  }catch(error){$('history-error').textContent=error.message}
 }
+async function refreshAllCosts(){try{const data=await api('/api/costs');const amounts=Object.entries(data.estimated||{}).map(([currency,value])=>currency+' '+Number(value).toFixed(6)).join(' / ');$('all-costs').textContent='全部任务已记录费用估算：'+(amounts||'暂无可计价金额')+'\n'+(data.calls||0)+' 次调用 · '+(data.unpriced_calls||0)+' 次未完整计价 · '+(data.legacy_tasks_without_usage||0)+' 条旧记录缺少用量。恢复链不会重复计费统计。'}catch(error){$('all-costs').textContent='累计开销读取失败：'+error.message}}
 async function loadProject(record){
  try{
   const [project,changes]=await Promise.all([api('/api/projects/'+(record.state.workspace_id||record.id)),api('/api/jobs/'+record.id+'/changes')]);
@@ -397,8 +456,8 @@ async function loadProject(record){
  }catch(error){if(historySelection?.id===record.id)$('project-error').textContent='项目版本读取失败：'+error.message}
 }
 $('project-restore').onclick=async()=>{const record=historySelection;if(!record)return;$('project-restore').disabled=true;try{await api('/api/projects/'+(record.state.workspace_id||record.id)+'/restore',{version:record.id});await openHistory(record.id,historyOpener)}catch(error){$('project-error').textContent=error.message}finally{$('project-restore').disabled=false}};
-$('history-edit').onclick=()=>{const record=historySelection;if(!record)return;revisionBase=record.id;$('revision-context').hidden=false;$('revision-label').textContent='正在修改：'+$('history-title').textContent+' · 基于版本 '+record.id+'。原需求与源码会保留，请只描述本次修改。';$('idea').value='';$('requirements').value='';historyDialog.close();historyListDialog.close();$('idea').scrollIntoView({block:'center'});$('idea').focus()};
-$('revision-cancel').onclick=()=>{revisionBase=null;$('revision-context').hidden=true};
+$('history-edit').onclick=()=>{const record=historySelection;if(!record)return;revisionBase=record.id;revisionCases=record.state.business_cases||[];$('delivery-mode').value=record.state.delivery_mode?'delivery':'demo';$('business-scenario').value='';$('revision-context').hidden=false;$('revision-label').textContent='正在修改：'+$('history-title').textContent+' · 基于版本 '+record.id+'。原需求与源码会保留，请只描述本次修改。'+(revisionCases.length?' 留空业务步骤时沿用原有 '+revisionCases.length+' 个测试。':'');if(record.state.limits){const limits=record.state.limits;$('max-calls').value=limits.max_calls;$('max-tokens').value=limits.max_tokens;$('max-cost').value=limits.max_cost??'';$('budget-currency').value=limits.currency;policyDirty=true}$('idea').value='';$('requirements').value='';historyDialog.close();historyListDialog.close();$('idea').scrollIntoView({block:'center'});$('idea').focus()};
+$('revision-cancel').onclick=()=>{revisionBase=null;revisionCases=[];$('revision-context').hidden=true};
 async function refreshHistoryPreview(){
  if(!historySelection||!historyDialog.open)return;
  const ident=historySelection.id;
@@ -416,6 +475,8 @@ async function controlHistoryPreview(action){
  catch(error){if(historySelection?.id===ident){historyPreviewError=error.message;$('history-preview-status').textContent=error.message;$('history-preview-start').disabled=false}}
 }
 $('history-preview-start').onclick=()=>controlHistoryPreview('start');$('history-preview-stop').onclick=()=>controlHistoryPreview('stop');
+$('history-recover').onclick=async()=>{const record=historySelection;if(!record)return;$('history-recover').disabled=true;try{const result=await api('/api/jobs/'+record.id+'/resume',policyDirty?{limits:limitsInput()}:{});historyDialog.close();historyListDialog.close();job=result.id;sessionStorage.setItem('factoryJob',job);approvalKey='';clearInterval(timer);await poll();if(!last?.done)timer=setInterval(poll,1500);refreshHistory();$('execution').scrollIntoView({block:'start'})}catch(error){$('history-detail-error').textContent=error.message}finally{$('history-recover').disabled=false}};
+$('history-bundle').onclick=async()=>{const record=historySelection;if(!record)return;$('history-bundle').disabled=true;try{const response=await fetch('/api/jobs/'+record.id+'/bundle',{headers:{'X-Factory-Token':token}});if(!response.ok)throw Error((await response.json()).error);const url=URL.createObjectURL(await response.blob());const a=node('a');a.href=url;a.download='delivery-'+record.id+'.zip';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}catch(error){$('history-detail-error').textContent=error.message}finally{$('history-bundle').disabled=false}};
 $('history-close').onclick=()=>historyDialog.close();
 const historyListDialog=$('task-history');
 $('open-history').onclick=e=>{e.preventDefault();hideCursor();historyListDialog.append(particleCanvas,cursor);historyListDialog.showModal();refreshHistory()};

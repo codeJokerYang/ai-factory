@@ -41,7 +41,16 @@ class Jobs:
     def listing(self, offset=0, limit=30):
         return self.history.listing(offset, limit)
 
-    def start(self, idea, requirements, *, base_version=None, client_name=''):
+    def start(self, idea, requirements, *, base_version=None, client_name='', limits=None, delivery_mode=False, business_cases=None):
+        from .execution_policy import ExecutionLimits, BusinessCase
+        if limits is not None and not isinstance(limits, dict):
+            raise ValueError('预算必须是对象')
+        policy = ExecutionLimits.model_validate(limits or {})
+        if type(delivery_mode) is not bool or (business_cases is not None and not isinstance(business_cases, list)):
+            raise ValueError('交付模式或业务测试格式无效')
+        cases = [BusinessCase.model_validate(case) for case in (business_cases or [])]
+        if len(cases) > 10 or (delivery_mode and (not cases or any(not any(s.action in ('text','value') for s in c.steps) for c in cases))):
+            raise ValueError('交付模式需 1–10 个业务测试，每个至少包含一条实际结果断言')
         if not isinstance(idea, str) or not idea.strip() or len(idea) > 30000:
             raise ValueError('需求不能为空且不超过 30000 字符')
         if (not isinstance(requirements, list) or len(requirements) > 100
@@ -59,6 +68,9 @@ class Jobs:
             ident = uuid.uuid4().hex[:12]
             state = ProjectState(project_id=ident, idea=idea.strip(), requirements=[r.strip() for r in requirements])
             state.workspace_id = ident
+            state.limits = policy
+            state.delivery_mode = delivery_mode
+            state.business_cases = cases
             state.client_name = client_name.strip()
             if base_version:
                 base_record = self.snapshot(base_version)
@@ -95,6 +107,59 @@ class Jobs:
         threading.Thread(target=self._run, args=(ident,), daemon=True).start()
         return ident
 
+    def resume(self, source, limits=None):
+        from .execution_policy import ExecutionLimits
+        with self.lock, self.history.lock:
+            existing = self.history.db.execute('SELECT target FROM recoveries WHERE source=?', (source,)).fetchone()
+            if existing:
+                return existing[0]
+            if any(not j['done'] for j in self.items.values()):
+                raise ValueError('已有任务运行中，请先处理当前任务')
+            old = self.snapshot(source)
+            if not old['done'] or old['state']['phase'] not in ('interrupted', 'failed'):
+                raise ValueError('仅可恢复已中断或失败的任务；被拒绝任务需修改需求后重提')
+            saved = self.history.recovery_state(source)
+            original = ProjectState.model_validate(old['state'])
+            recovered = ProjectState.model_validate(saved or dict(project_id=source, idea=original.idea,
+                requirements=original.requirements, workspace_id=original.workspace_id,
+                client_name=original.client_name, change_requests=original.change_requests,
+                base_version=original.base_version, generated_files=[f.model_dump() for f in original.generated_files] if original.base_version else [],
+                extra_dependencies=original.extra_dependencies if original.base_version else {}))
+            project = self.history.project(original.workspace_id or source)
+            if project['current_version'] != original.expected_version:
+                raise ValueError('项目当前版本已变化，请从当前版本继续修改，不能恢复过期任务')
+            recovered.project_id = uuid.uuid4().hex[:12]
+            recovered.workspace_id = project['id']
+            recovered.resumed_from = source
+            recovered.expected_version = original.expected_version
+            recovered.limits = ExecutionLimits.model_validate(limits) if limits is not None else original.limits
+            recovered.model_calls = original.model_calls  # Reservations are cumulative across recovery.
+            recovered.delivery_mode = original.delivery_mode
+            recovered.business_cases = original.business_cases
+            recovered.completed_steps = [s for s in recovered.completed_steps if s in ('分析需求','设计方案','拆解任务','生成代码')]
+            recovered.phase = ProjectPhase.INIT
+            recovered.errors = []
+            recovered.gate_1_approved = recovered.gate_2_approved = recovered.preview_ready = False
+            recovered.gate_1_feedback = recovered.gate_2_feedback = None
+            recovered.build_passed = None
+            recovered.build_dir = recovered.preview_url = None
+            recovered.code_review = recovered.security_report = recovered.acceptance_report = None
+            recovered.business_report = None
+            recovered.artifact_hashes = {}
+            recovered.repair_attempts = recovered.review_rounds = 0
+            ident = recovered.project_id
+            self.items[ident] = dict(state=recovered, logs=['从任务 '+source+' 恢复；复用完成步骤，重新检查并审批。'], done=False,
+                waiting=None, decision=None, event=threading.Event(), decisions=[], created_at=now_iso(), updated_at=now_iso())
+            try:
+                with self.history.db:
+                    self.history.save(self.snapshot(ident), commit=False)
+                    self.history.db.execute('INSERT INTO recoveries VALUES (?,?)', (source, ident))
+            except Exception:
+                del self.items[ident]
+                raise
+        threading.Thread(target=self._run, args=(ident,), daemon=True).start()
+        return ident
+
     def _run(self, ident):
         job = self.items[ident]
 
@@ -123,6 +188,8 @@ class Jobs:
 
         try:
             extra = {'checkpoint': checkpoint} if 'checkpoint' in inspect.signature(self.execute).parameters else {}
+            if 'prices' in inspect.signature(self.execute).parameters:
+                extra['prices'] = self.history.prices()
             state = self.execute(job['state'], self.llm_factory(),
                                  approver=lambda s: approve('plan', s),
                                  preview_approver=lambda s: approve('preview', s), emit=emit, **extra)
@@ -170,8 +237,16 @@ class Jobs:
 
 
 def make_server(port=8765, jobs=None):
-    jobs = jobs or Jobs(history_path=config.PROJECT_ROOT / '.factory' / 'history.sqlite3',
+    lease = None
+    if jobs is None:
+        from .lease import ServerLease
+        lease = ServerLease(config.PROJECT_ROOT / '.factory' / 'web.lock')
+        try:
+            jobs = Jobs(history_path=config.PROJECT_ROOT / '.factory' / 'history.sqlite3',
                         reports_dir=config.PROJECT_ROOT / '.factory' / 'runs')
+        except Exception:
+            lease.close()
+            raise
     token = secrets.token_urlsafe(32)
 
     class Handler(BaseHTTPRequestHandler):
@@ -207,6 +282,16 @@ def make_server(port=8765, jobs=None):
             if self.headers.get('X-Factory-Token') != token:
                 return self.reply(403, {'error': '会话无效，请刷新页面'})
             parsed = urlsplit(self.path)
+            if parsed.path == '/api/prices':
+                return self.reply(200, dict(workflow_version=2, prices=jobs.history.prices(), model=config.get_model('builder', config.BUILDER_MODEL)))
+            if parsed.path == '/api/costs':
+                return self.reply(200, jobs.history.costs())
+            if self.path.startswith('/api/jobs/') and self.path.endswith('/bundle'):
+                try:
+                    from .delivery import make_bundle
+                    return self.reply(200, make_bundle(jobs.snapshot(self.path.split('/')[3]), config.GENERATED_DIR), 'application/zip')
+                except (ValueError, KeyError, OSError) as exc:
+                    return self.reply(400, {'error': str(exc)})
             if parsed.path == '/api/jobs':
                 try:
                     query = parse_qs(parsed.query)
@@ -249,8 +334,15 @@ def make_server(port=8765, jobs=None):
                 if self.path == '/api/jobs':
                     if not config.get_api_key():
                         return self.reply(400, {'error': '请先在本地 .env 配置模型 API 凭据并重启服务；不要将密钥填入需求框'})
-                    ident = jobs.start(data.get('idea'), data.get('requirements', []), base_version=data.get('base_version'), client_name=data.get('client_name', ''))
+                    ident = jobs.start(data.get('idea'), data.get('requirements', []), base_version=data.get('base_version'), client_name=data.get('client_name', ''),
+                                       limits=data.get('limits'), delivery_mode=data.get('delivery_mode', False), business_cases=data.get('business_cases'))
                     return self.reply(202, {'id': ident})
+                if self.path == '/api/prices':
+                    return self.reply(200, jobs.history.set_price(data))
+                if self.path.startswith('/api/jobs/') and self.path.endswith('/resume'):
+                    if not config.get_api_key():
+                        raise ValueError('请先配置模型 API 凭据')
+                    return self.reply(202, {'id': jobs.resume(self.path.split('/')[3], data.get('limits'))})
                 if self.path.startswith('/api/projects/') and self.path.endswith('/restore'):
                     with jobs.lock:
                         return self.reply(200, jobs.history.restore_version(self.path.split('/')[3], data.get('version')))
@@ -277,8 +369,15 @@ def make_server(port=8765, jobs=None):
         def server_close(self):
             jobs.previews.stop()
             super().server_close()
+            if lease:
+                lease.close()
 
-    return LocalServer(('127.0.0.1', port), Handler)
+    try:
+        return LocalServer(('127.0.0.1', port), Handler)
+    except Exception:
+        if lease:
+            lease.close()
+        raise
 
 
 def main(argv=None):

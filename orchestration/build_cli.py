@@ -76,7 +76,7 @@ def review_and_revise(state, target, project, builder, reviewer, *, write_fn=Non
     return state.code_review
 
 
-def execute(state, llm, *, approver, preview_approver=None, generate_only=False, emit=print, checkpoint=None):
+def execute(state, llm, *, approver, preview_approver=None, generate_only=False, emit=print, checkpoint=None, prices=None):
     """Shared CLI/web workflow. Reports are local; no automatic publish or merge."""
     from .agents.reviewer import Reviewer
     from .agents.security import SecurityAgent
@@ -85,7 +85,6 @@ def execute(state, llm, *, approver, preview_approver=None, generate_only=False,
     from .security import scan_files, is_blocking, validate_feature_files
     from .verify import VerifyResult
 
-    builder = Builder(llm)
     report_dir = config.PROJECT_ROOT / '.factory' / 'runs' / state.project_id
     report_dir.mkdir(parents=True, exist_ok=True)
 
@@ -109,8 +108,17 @@ def execute(state, llm, *, approver, preview_approver=None, generate_only=False,
 
     def step(label, fn):
         nonlocal state
+        reusable = {'分析需求': state.product_spec, '设计方案': state.architecture,
+                    '拆解任务': state.dag, '生成代码': state.generated_files}
+        if state.resumed_from and label in state.completed_steps and reusable.get(label):
+            emit('复用已完成检查点：' + label)
+            return
         emit(label)
+        llm.state = state
         state = run_step_safely(fn, state)
+        llm.state = state
+        if state.phase != ProjectPhase.FAILED and label not in state.completed_steps:
+            state.completed_steps.append(label)
         save()
         if state.phase == ProjectPhase.FAILED:
             raise RuntimeError('; '.join(state.errors))
@@ -122,7 +130,18 @@ def execute(state, llm, *, approver, preview_approver=None, generate_only=False,
             return VerifyResult(False, 'security', '安全扫描阻止执行生成代码')
         return verify_app(target, install=install)
 
+    def model_checkpoint(current):
+        nonlocal state
+        state = current
+        save()
+
+    from .execution_policy import MeteredLLM
+    llm = MeteredLLM(llm, state, model_checkpoint, prices)
+    builder = Builder(llm)
+
     try:
+        if state.delivery_mode and (generate_only or preview_approver is None):
+            raise ValueError('交付模式必须运行真实业务测试并完成人工预览验收')
         for name, agent in [('分析需求', Planner(llm)), ('设计方案', Architect(llm)), ('拆解任务', Decomposer(llm))]:
             step(name, agent.run)
         step('等待方案审批', make_gate_1(approver))
@@ -165,6 +184,9 @@ def execute(state, llm, *, approver, preview_approver=None, generate_only=False,
         step('逐项核对原始指令', lambda s: check_acceptance(s, llm, reviewer.model))
         if not state.acceptance_report.passed:
             raise ValueError('指令核对未通过：请查看缺失或不确定项；代码核对不等于业务测试')
+        from .delivery import capture_artifacts
+        state.artifact_hashes = capture_artifacts(target)
+        save()
         if preview_approver:
             from .preview import dev_server
             from .gate2 import make_gate_2
@@ -175,6 +197,13 @@ def execute(state, llm, *, approver, preview_approver=None, generate_only=False,
                 save()
                 if not ready:
                     raise ValueError('预览服务未就绪，不能批准交付')
+                if state.delivery_mode:
+                    from .business import run_business_tests, business_passed
+                    emit('运行真实浏览器业务测试（桌面与手机）')
+                    state.business_report = run_business_tests(url, state.business_cases, report_dir / 'business')
+                    save()
+                    if not business_passed(state):
+                        raise ValueError('真实业务测试未通过，不能进入交付验收；请查看测试结果')
                 step('等待预览验收', make_gate_2(preview_approver))
             if state.gate_2_approved:
                 from .knowledge_cache import save_knowledge_case

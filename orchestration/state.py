@@ -10,6 +10,7 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 from .acceptance import AcceptanceReport
+from .execution_policy import ExecutionLimits, BusinessCase
 
 from .schemas import Architecture, CacheLookup, CodeReview, Dag, GeneratedFile, ProductSpec, SecurityReport
 
@@ -41,6 +42,14 @@ class ProjectState(BaseModel):
     expected_version: Optional[str] = None
     client_name: str = ""
     change_requests: List[str] = Field(default_factory=list)
+    resumed_from: Optional[str] = None
+    completed_steps: List[str] = Field(default_factory=list)
+    limits: ExecutionLimits = Field(default_factory=ExecutionLimits)
+    model_calls: list[dict] = Field(default_factory=list)
+    delivery_mode: bool = False
+    business_cases: list[BusinessCase] = Field(default_factory=list, max_length=10)
+    business_report: Optional[dict] = None
+    artifact_hashes: Dict[str, str] = Field(default_factory=dict)
     requirements: List[str] = Field(default_factory=list)
     acceptance_report: Optional[AcceptanceReport] = None
     preview_ready: bool = False

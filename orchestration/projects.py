@@ -8,6 +8,9 @@ import json
 
 def accepted(record):
     state = record['state']
+    from .business import business_passed
+    if state.get('delivery_mode') and not business_passed(state):
+        return False
     from .acceptance import AcceptanceReport
     try:
         report = AcceptanceReport.model_validate(state.get('acceptance_report'))
@@ -50,7 +53,7 @@ def sync(db, record, importing=False):
     exists = db.execute('SELECT 1 FROM versions WHERE id=?', (record['id'],)).fetchone()
     if not exists:
         ordinal = db.execute('SELECT COALESCE(MAX(ordinal),0)+1 FROM versions WHERE project=?', (project,)).fetchone()[0]
-        db.execute('INSERT INTO versions VALUES (?,?,?,?)', (record['id'], project, state.get('base_version'), ordinal))
+        db.execute('INSERT INTO versions VALUES (?,?,?,?)', (record['id'], project, state.get('resumed_from') or state.get('base_version'), ordinal))
     db.execute('UPDATE projects SET updated=? WHERE id=?', (record['updated_at'], project))
     if accepted(record):
         # Never re-promote a previously committed version after a user rollback.

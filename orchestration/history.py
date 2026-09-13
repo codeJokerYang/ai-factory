@@ -6,6 +6,7 @@ import os
 import re
 import sqlite3
 import threading
+from contextlib import nullcontext
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -58,6 +59,9 @@ class History:
         self.db.execute('''CREATE TABLE IF NOT EXISTS tasks (
             id TEXT PRIMARY KEY, created TEXT NOT NULL, updated TEXT NOT NULL,
             title TEXT NOT NULL, status TEXT NOT NULL, document TEXT NOT NULL)''')
+        self.db.execute('CREATE TABLE IF NOT EXISTS recovery_points (id TEXT PRIMARY KEY, steps TEXT NOT NULL, document TEXT NOT NULL)')
+        self.db.execute('CREATE TABLE IF NOT EXISTS recoveries (source TEXT PRIMARY KEY, target TEXT NOT NULL)')
+        self.db.execute('CREATE TABLE IF NOT EXISTS prices (model TEXT PRIMARY KEY, document TEXT NOT NULL)')
         from .projects import initialize
         with self.db:
             initialize(self.db)
@@ -74,11 +78,11 @@ class History:
                 record['updated_at'] = now_iso()
                 self.save(record)
 
-    def save(self, record):
+    def save(self, record, *, commit=True):
         record = redact(record)
         state = record['state']
         title = (state.get('product_spec') or {}).get('project_name') or state['idea'].splitlines()[0]
-        with self.lock, self.db:
+        with self.lock, (self.db if commit else nullcontext()):
             previous = self.db.execute('SELECT document FROM tasks WHERE id=?', (record['id'],)).fetchone()
             if previous and json.loads(previous[0]).get('done'):
                 if json.loads(previous[0]) != record:
@@ -91,6 +95,45 @@ class History:
                     status_of(record), json.dumps(record, ensure_ascii=False)))
             from .projects import sync
             sync(self.db, record)
+            steps = state.get('completed_steps', [])
+            if steps and state.get('phase') not in ('failed', 'interrupted'):
+                key = json.dumps(steps)
+                old = self.db.execute('SELECT steps FROM recovery_points WHERE id=?', (record['id'],)).fetchone()
+                if not old or old[0] != key:
+                    self.db.execute('INSERT OR REPLACE INTO recovery_points VALUES (?,?,?)',
+                                    (record['id'], key, json.dumps(state, ensure_ascii=False)))
+
+    def recovery_state(self, ident):
+        with self.lock:
+            row = self.db.execute('SELECT document FROM recovery_points WHERE id=?', (ident,)).fetchone()
+            return json.loads(row[0]) if row else None
+
+    def prices(self):
+        with self.lock:
+            return {model: json.loads(raw) for model, raw in self.db.execute('SELECT model,document FROM prices').fetchall()}
+
+    def set_price(self, data):
+        from .execution_policy import ModelPrice
+        price = ModelPrice.model_validate(data).model_dump()
+        price['updated_at'] = now_iso()
+        with self.lock, self.db:
+            self.db.execute('INSERT OR REPLACE INTO prices VALUES (?,?)', (price['model'], json.dumps(price)))
+        return price
+
+    def costs(self):
+        from .execution_policy import cost_summary
+        calls, missing = [], 0
+        with self.lock:
+            for ident, raw in self.db.execute('SELECT id,document FROM tasks').fetchall():
+                state = json.loads(raw)['state']
+                if 'model_calls' not in state:
+                    missing += 1
+                # Recovery documents carry the ancestor ledger; count each call
+                # only in its original run, never once per recovery copy.
+                calls.extend(c for c in state.get('model_calls', []) if c.get('run_id') == ident)
+        result = cost_summary(calls)
+        result['legacy_tasks_without_usage'] = missing
+        return result
 
     def projects(self):
         with self.lock:
@@ -131,7 +174,7 @@ class History:
         from .revisions import file_diff
         with self.lock:
             record = self.get(ident)
-            base = record['state'].get('base_version')
+            base = record['state'].get('resumed_from') or record['state'].get('base_version')
             before = self.get(base)['state'].get('generated_files', []) if base else []
             return dict(base_version=base, files=file_diff(before, record['state'].get('generated_files', [])))
 
