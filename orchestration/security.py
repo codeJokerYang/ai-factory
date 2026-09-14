@@ -32,6 +32,18 @@ _PATTERNS = [
 _NEXT_PUBLIC_SECRET = re.compile(r"(?i)NEXT_PUBLIC_[A-Z0-9_]*(SECRET|SERVICE_ROLE|PRIVATE_KEY)")
 
 
+def validate_feature_files(files):
+    """Generated files cannot replace executable configuration or hidden files."""
+    seen = set()
+    for f in files:
+        path = f.path.replace("\\", "/").lower()
+        if (path in seen or any(p.startswith(".") for p in path.split("/"))
+                or path.split("/")[0] not in {"app", "components", "lib", "public", "types", "hooks", "utils"}
+                or not path.endswith((".ts", ".tsx", ".css", ".json", ".svg", ".txt", ".md"))):
+            raise ValueError(f"不允许生成此文件或重复路径: {f.path}")
+        seen.add(path)
+
+
 def scan_files(files: List[Tuple[str, str]]) -> List[SecurityFinding]:
     """files = [(path, content), ...] → 规则命中的 findings。"""
     findings: List[SecurityFinding] = []

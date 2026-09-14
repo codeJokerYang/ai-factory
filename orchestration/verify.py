@@ -72,7 +72,7 @@ def verify_app(
         return VerifyResult(False, "install", f"package.json 不存在: {app_dir}")
 
     if install:
-        code, out = _run(["install", "--no-audit", "--no-fund"], app_dir, timeout)
+        code, out = _run(["install", "--ignore-scripts", "--no-audit", "--no-fund"], app_dir, timeout)
         if code != 0:
             return VerifyResult(False, "install", _tail(out, tail_lines))
 

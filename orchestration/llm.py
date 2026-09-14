@@ -29,21 +29,32 @@ class AnthropicLLM:
         kwargs["timeout"] = config.LLM_TIMEOUT_SECONDS
         # Bearer token（Anthropic 兼容网关，如 GLM）优先；否则用 x-api-key。
         auth_token = os.environ.get(config.AUTH_TOKEN_ENV)
-        if auth_token and not api_key:
+        if config.get_provider() == "deepseek" and not api_key:
+            key = config.get_api_key()
+            if not key:
+                raise ValueError("未配置 DEEPSEEK_API_KEY")
+            kwargs["api_key"] = key
+        elif auth_token and not api_key:
             kwargs["auth_token"] = auth_token
         else:
             kwargs["api_key"] = api_key or os.environ.get(config.API_KEY_ENV)
         self._client = Anthropic(**kwargs)
+        self.last_usage = None
 
     def complete(
         self, *, model: str, system: str, prompt: str, max_tokens: int = config.MAX_TOKENS
     ) -> str:
+        self.last_usage = None
         resp = self._client.messages.create(
             model=model,
             max_tokens=max_tokens,
             system=system,
             messages=[{"role": "user", "content": prompt}],
         )
+        usage = getattr(resp, 'usage', None)
+        self.last_usage = dict(input_tokens=getattr(usage, 'input_tokens', None), output_tokens=getattr(usage, 'output_tokens', None),
+                               cache_read_input_tokens=getattr(usage, 'cache_read_input_tokens', None),
+                               cache_creation_input_tokens=getattr(usage, 'cache_creation_input_tokens', None))
         return "".join(
             block.text for block in resp.content if getattr(block, "type", None) == "text"
         )

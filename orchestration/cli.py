@@ -21,11 +21,9 @@ from .state import ProjectPhase, ProjectState
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    argv = argv if argv is not None else sys.argv[1:]
-    if not argv or not argv[0].strip():
-        print('用法: python -m orchestration.cli "<一句话 idea>"')
-        return 2
-    idea = argv[0].strip()
+    from .instructions import parse_request
+    args = parse_request(argv)
+    idea = args.idea
 
     try:
         from dotenv import load_dotenv
@@ -41,13 +39,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     from .llm import AnthropicLLM
 
     llm = AnthropicLLM()
-    state = ProjectState(project_id=uuid.uuid4().hex[:8], idea=idea)
+    state = ProjectState(project_id=uuid.uuid4().hex[:8], idea=idea, requirements=args.requirements)
     runner = make_runner(
         [
             Planner(llm).run,
             Architect(llm).run,
             Decomposer(llm).run,
-            make_gate_1(),
+            make_gate_1((lambda s: (True, None)) if args.approve_plan else None),
         ]
     )
     state = runner.run(state)

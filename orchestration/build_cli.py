@@ -1,15 +1,13 @@
-"""Build CLI（Week 3 v1）：一句话 idea → Plan → Builder → 可跑的 Next.js app。
+"""Instruction-driven CLI and shared web workflow.
 
-    python -m orchestration.build_cli "<idea>" [--verify]
-
-Plan 阶段 Gate 1 在 build 流程里自动通过（Gate 1 已在 Plan pipeline 单独验证）；
-真正的人工关卡是 Gate 2（preview 审核），在 app 跑起来后人工进行。
---verify: 生成后自动跑 npm install && npm run build（自动构建门），编译不过即失败。
+Build validation is the default. --generate-only explicitly skips execution.
+Plan and preview approvals are separate; all final quality checks must pass.
 """
 from __future__ import annotations
 
 import sys
 import uuid
+import time
 from typing import List, Optional
 
 from . import config
@@ -17,10 +15,8 @@ from .agents.architect import Architect
 from .agents.builder import Builder
 from .agents.decomposer import Decomposer
 from .agents.planner import Planner
-from .cache_metrics import format_cache_lookup, record_cache_lookup, record_case_saved
+from .cache_metrics import record_cache_lookup, record_case_saved
 from .gates import make_gate_1
-from .io_writers import write_outputs
-from .runner import make_runner
 from .scaffold import write_app
 from .state import ProjectPhase, ProjectState
 from .util import safe_path_component
@@ -30,7 +26,7 @@ def build_and_verify(target, project, state, builder, *, verify_fn=None, write_f
     """构建门 + 自愈：verify 失败（build 阶段）时把编译器报错回灌 Builder 修复 → 重写 → 复验。
 
     verify_fn / write_fn 可注入便于离线测试（默认用真实的 verify_app / write_app）。
-    install 只在第一次跑（依赖装一次），修复后的复验跳过 install。
+    修复可能改变依赖，因此复验重新安装白名单依赖。
     """
     from .verify import verify_app
 
@@ -44,7 +40,7 @@ def build_and_verify(target, project, state, builder, *, verify_fn=None, write_f
         if state.phase == ProjectPhase.FAILED:  # repair 自身解析失败
             break
         write_fn(target, project, state.generated_files, state.extra_dependencies)
-        result = verify_fn(target, install=False)
+        result = verify_fn(target, install=True)
     state.build_passed = result.passed
     state.build_log = result.log
     return result
@@ -80,191 +76,175 @@ def review_and_revise(state, target, project, builder, reviewer, *, write_fn=Non
     return state.code_review
 
 
-def main(argv: Optional[List[str]] = None) -> int:
-    argv = argv if argv is not None else sys.argv[1:]
-    verify = "--verify" in argv
-    gate2 = "--gate2" in argv
-    positional = [a for a in argv if not a.startswith("--")]
-    if not positional or not positional[0].strip():
-        print('用法: python -m orchestration.build_cli "<一句话 idea>" [--verify] [--gate2]')
-        return 2
-    idea = positional[0].strip()
+def execute(state, llm, *, approver, preview_approver=None, generate_only=False, emit=print, checkpoint=None, prices=None):
+    """Shared CLI/web workflow. Reports are local; no automatic publish or merge."""
+    from .agents.reviewer import Reviewer
+    from .agents.security import SecurityAgent
+    from .acceptance import check_acceptance
+    from .runner import run_step_safely
+    from .security import scan_files, is_blocking, validate_feature_files
+    from .verify import VerifyResult
+
+    report_dir = config.PROJECT_ROOT / '.factory' / 'runs' / state.project_id
+    report_dir.mkdir(parents=True, exist_ok=True)
+
+    def save():
+        import json
+        from .history import redact
+        temp = report_dir / 'report.json.tmp'
+        temp.write_text(json.dumps(redact(state.model_dump(mode='json')), ensure_ascii=False, indent=2), encoding='utf-8')
+        # Windows indexers can briefly hold the destination without delete sharing.
+        # Retry boundedly; never truncate the last valid report to work around a lock.
+        for attempt in range(4):
+            try:
+                temp.replace(report_dir / 'report.json')
+                break
+            except PermissionError:
+                if attempt == 3:
+                    raise
+                time.sleep(.05 * (attempt + 1))
+        if checkpoint:
+            checkpoint(state)
+
+    def step(label, fn):
+        nonlocal state
+        reusable = {'分析需求': state.product_spec, '设计方案': state.architecture,
+                    '拆解任务': state.dag, '生成代码': state.generated_files}
+        if state.resumed_from and label in state.completed_steps and reusable.get(label):
+            emit('复用已完成检查点：' + label)
+            return
+        emit(label)
+        llm.state = state
+        state = run_step_safely(fn, state)
+        llm.state = state
+        if state.phase != ProjectPhase.FAILED and label not in state.completed_steps:
+            state.completed_steps.append(label)
+        save()
+        if state.phase == ProjectPhase.FAILED:
+            raise RuntimeError('; '.join(state.errors))
+
+    def safe_verify(target, install=True):
+        from .verify import verify_app
+        validate_feature_files(state.generated_files)
+        if is_blocking(scan_files([(f.path, f.content) for f in state.generated_files])):
+            return VerifyResult(False, 'security', '安全扫描阻止执行生成代码')
+        return verify_app(target, install=install)
+
+    def model_checkpoint(current):
+        nonlocal state
+        state = current
+        save()
+
+    from .execution_policy import MeteredLLM
+    llm = MeteredLLM(llm, state, model_checkpoint, prices)
+    builder = Builder(llm)
 
     try:
-        from dotenv import load_dotenv
-
-        load_dotenv(config.PROJECT_ROOT / ".env")
-    except ImportError:
-        pass
-
-    if not config.get_api_key():
-        print(f"❌ 未设置 {config.API_KEY_ENV}/{config.AUTH_TOKEN_ENV}。见 .env.example。")
-        return 1
-
-    from .llm import AnthropicLLM
-
-    llm = AnthropicLLM()
-    state = ProjectState(project_id=uuid.uuid4().hex[:8], idea=idea)
-
-    # Plan + Build 一条龙；Gate 1 自动通过（build 演示），Gate 2 留给人工 preview 审核。
-    builder = Builder(llm)
-    runner = make_runner(
-        [
-            Planner(llm).run,
-            Architect(llm).run,
-            Decomposer(llm).run,
-            make_gate_1(approver=lambda s: (True, None)),
-            builder.run,
-        ]
-    )
-    state = runner.run(state)
-
-    if state.cache_lookup is not None:
-        try:
-            record_cache_lookup(state.cache_lookup)
-        except (OSError, ValueError) as exc:
-            # 可观测性与缓存相同，属于非阻塞优化层。
-            state.warnings.append(f"cache metrics: lookup 未记录（{exc}）")
-
-    if state.phase == ProjectPhase.FAILED:
-        print("\n❌ 构建失败:")
-        for err in state.errors:
-            print("  -", err)
-        return 1
-
-    for w in state.warnings:
-        print(f"⚠️  {w}")
-    if state.cache_lookup is not None:
-        print(f"\n🧠 {format_cache_lookup(state.cache_lookup)}")
-
-    # 持久化 Plan 产物（spec / architecture / tasks.json）—— 与 orchestration.cli 一致
-    plan_paths = write_outputs(state)
-
-    project = state.product_spec.project_name
-    project_dir = safe_path_component(project, fallback=state.project_id)
-    target = config.GENERATED_DIR / project_dir
-    written = write_app(target, project, state.generated_files, state.extra_dependencies)
-    state.build_dir = str(target)
-
-    print("\nPlan 产物:")
-    for key, path in plan_paths.items():
-        print(f"   {key:13}: {path}")
-
-    print(f"\n✅ 已生成 app: {target}")
-    print(f"   特性文件（Builder）: {len(state.generated_files)}  | 总文件: {len(written)}")
-    for f in state.generated_files:
-        print(f"     - {f.path}")
-
-    # Gate 2 前：Reviewer 审查 + Builder 自愈闭环（否决 → 按意见修 → 复审，≤1 轮后升级 Gate 2）
-    from .agents.reviewer import Reviewer
-
-    reviewer = Reviewer(llm)
-    review_and_revise(state, target, project, builder, reviewer, max_rounds=1)
-    cr = state.code_review
-    if cr is not None:
-        rounds = f"（自愈 {state.review_rounds} 轮后）" if state.review_rounds else ""
-        tag = "✅ 通过" if cr.passed else "⚠️  仍有阻塞问题（升级 Gate 2 人工决策）"
-        print(f"\n🔍 Reviewer: {tag}{rounds} — {cr.summary}")
-        for issue in cr.issues:
-            print(f"   [{issue.severity}] {issue.file}: {issue.message}")
-        if not cr.passed:
-            for issue in cr.issues:
-                if issue.severity == "high":
-                    msg = f"reviewer[high] {issue.file}: {issue.message}"
-                    if msg not in state.warnings:
-                        state.warnings.append(msg)
-
-    if verify:
-        print("\n🔧 自动构建门: npm install && npm run build（失败自动修复一次）...")
-        result = build_and_verify(target, project, state, builder, max_repairs=1)
-        if not result.passed:
-            state.phase = ProjectPhase.FAILED
-            print(f"❌ 构建门未通过（{result.step}，已尝试修复 {state.repair_attempts} 次）:\n")
-            print(result.log)
-            return 1
-        state.phase = ProjectPhase.BUILD_VERIFIED
-        if state.repair_attempts:
-            print(f"✅ 构建门通过（Builder 自愈 {state.repair_attempts} 次后 next build 成功）")
-        else:
-            print("✅ 构建门通过（next build 成功）")
-
-    # Security 扫描（规则先行 + 高危再 LLM，一票否决；宪法 5.2）
-    from .agents.security import SecurityAgent
-
-    SecurityAgent(llm).run(state)
-    sr = state.security_report
-    if sr is not None:
-        if sr.passed:
-            print("\n🛡️  Security: ✅ 通过（规则扫描无高危）")
-        else:
-            print(f"\n🛡️  Security: 🔴 一票否决（risk={sr.risk_level}）")
-        for f in sr.findings:
-            print(f"   [{f.severity}] {f.file}: {f.kind} — {f.message}")
-        if sr.summary:
-            print(f"   评估: {sr.summary}")
-        if not sr.passed:
-            for f in sr.findings:
-                if f.severity in ("high", "critical"):
-                    msg = f"security[{f.severity}] {f.file}: {f.kind}"
-                    if msg not in state.warnings:
-                        state.warnings.append(msg)
-            if not gate2:
-                print("\n❌ Security 一票否决，且无 Gate 2 人工 override —— 阻塞。")
-                return 1
-            print("⚠️  Security 否决 —— 需在 Gate 2 由人工 override 才能放行。")
-
-    if gate2:
-        from .gate2 import make_gate_2
-        from .preview import dev_server, screenshot
-
-        # --gate2 需要依赖已安装；未走 --verify 时先装一次
-        if not verify:
-            from .verify import verify_app
-
-            print("\n🔧 安装依赖中（npm install）...")
-            verify_app(target, install=True, timeout=600)
-
-        print("\n🚀 启动 dev server 进行 Gate 2 预览...")
-        with dev_server(target) as (url, ready):
-            state.preview_url = url
-            if not ready:
-                print(f"⚠️  dev server 未在超时内就绪：{url}（可手动打开确认）")
-            else:
-                shot = config.GENERATED_DIR / f"{project_dir}.preview.png"
-                if screenshot(url, shot):
-                    state.screenshot_path = str(shot)
-                    print(f"📸 截图: {shot}")
-                else:
-                    print("（未安装 playwright，跳过自动截图；可手动打开预览）")
-            state = make_gate_2()(state)
-
-        if state.gate_2_approved:
-            from .knowledge_cache import save_knowledge_case
-
+        if state.delivery_mode and (generate_only or preview_approver is None):
+            raise ValueError('交付模式必须运行真实业务测试并完成人工预览验收')
+        for name, agent in [('分析需求', Planner(llm)), ('设计方案', Architect(llm)), ('拆解任务', Decomposer(llm))]:
+            step(name, agent.run)
+        step('等待方案审批', make_gate_1(approver))
+        if not state.gate_1_approved:
+            return state
+        step('生成代码', builder.run)
+        if state.cache_lookup is not None:
             try:
-                case_path = save_knowledge_case(state)
-                print(f"🧠 L3 案例已缓存: {case_path}")
+                record_cache_lookup(state.cache_lookup)
+            except (OSError, ValueError) as exc:
+                state.warnings.append(f'缓存指标未记录: {exc}')
+        project = state.product_spec.project_name
+        project_dir = safe_path_component(project, fallback='app') + '-' + state.project_id
+        target = config.GENERATED_DIR / project_dir
+        # A fresh directory prevents previous generated files surviving repairs.
+        state.build_dir = str(target)
+        write_app(target, project, state.generated_files, state.extra_dependencies)
+        save()
+        if generate_only:
+            emit('仅生成完成，未执行验证；不能视为交付通过')
+            return state
+        reviewer = Reviewer(llm)
+        step('代码审查与修订', lambda s: (review_and_revise(s, target, project, builder, reviewer), s)[1])
+        step('安全扫描', SecurityAgent(llm).run)
+        if state.security_report is None or not state.security_report.passed:
+            raise ValueError('安全扫描未通过，禁止安装、构建或预览')
+        emit('安装依赖与构建，失败时尝试修复一次')
+        result = build_and_verify(target, project, state, builder, verify_fn=safe_verify)
+        save()
+        if not result.passed or state.phase == ProjectPhase.FAILED:
+            raise ValueError('构建未通过: ' + result.log)
+        state.phase = ProjectPhase.BUILD_VERIFIED
+        # Always review the final files, including compiler repairs.
+        step('最终代码复审', reviewer.run)
+        if state.code_review is None or not state.code_review.passed:
+            raise ValueError('最终代码审查未通过')
+        step('最终安全检查', SecurityAgent(llm).run)
+        if state.security_report is None or not state.security_report.passed:
+            raise ValueError('最终安全检查未通过')
+        step('逐项核对原始指令', lambda s: check_acceptance(s, llm, reviewer.model))
+        if not state.acceptance_report.passed:
+            raise ValueError('指令核对未通过：请查看缺失或不确定项；代码核对不等于业务测试')
+        from .delivery import capture_artifacts
+        state.artifact_hashes = capture_artifacts(target)
+        save()
+        if preview_approver:
+            from .preview import dev_server
+            from .gate2 import make_gate_2
+            emit('启动预览')
+            with dev_server(target) as (url, ready):
+                state.preview_url = url
+                state.preview_ready = ready
+                save()
+                if not ready:
+                    raise ValueError('预览服务未就绪，不能批准交付')
+                if state.delivery_mode:
+                    from .business import run_business_tests, business_passed
+                    emit('运行真实浏览器业务测试（桌面与手机）')
+                    state.business_report = run_business_tests(url, state.business_cases, report_dir / 'business')
+                    save()
+                    if not business_passed(state):
+                        raise ValueError('真实业务测试未通过，不能进入交付验收；请查看测试结果')
+                step('等待预览验收', make_gate_2(preview_approver))
+            if state.gate_2_approved:
+                from .knowledge_cache import save_knowledge_case
                 try:
+                    save_knowledge_case(state)
                     record_case_saved(state)
                 except (OSError, ValueError) as exc:
-                    print(f"ℹ️  缓存质量指标未记录: {exc}")
-            except (OSError, ValueError) as exc:
-                # 缓存是优化层，不得把已通过 Gate 2 的产品反向变成失败。
-                print(f"ℹ️  L3 案例未缓存: {exc}")
-            print("\n✅ Gate 2 通过 — 可合并。")
-            return 0
-        print("\n↩️  Gate 2 驳回。")
-        if state.gate_2_feedback:
-            print(f"   反馈: {state.gate_2_feedback}")
+                    state.warnings.append(f'案例或指标未保存: {exc}')
+        else:
+            emit('构建与代码核对通过，尚未进行人工预览验收')
+        return state
+    except Exception as exc:
+        message = str(exc)
+        if message not in state.errors:
+            state.errors.append(message)
+        state.phase = ProjectPhase.FAILED
+        emit('失败: ' + message)
+        return state
+    finally:
+        save()
+        emit('本地报告: ' + str(report_dir / 'report.json'))
+
+
+def main(argv: Optional[List[str]] = None) -> int:
+    from .instructions import parse_request
+    from .gates import _cli_approver
+    from .gate2 import _cli_approver as preview_approver
+    from .llm import AnthropicLLM
+    from dotenv import load_dotenv
+    args = parse_request(argv, build=True)
+    load_dotenv(config.PROJECT_ROOT / '.env')
+    if not config.get_api_key():
+        print('未配置模型 API 凭据；请在本地 .env 或环境变量中配置。')
         return 1
+    state = ProjectState(project_id=uuid.uuid4().hex[:12], idea=args.idea, requirements=args.requirements)
+    state = execute(state, AnthropicLLM(),
+                    approver=(lambda s: (True, None)) if args.approve_plan else _cli_approver,
+                    preview_approver=preview_approver if args.gate2 else None,
+                    generate_only=args.generate_only)
+    return 1 if state.phase in {ProjectPhase.FAILED, ProjectPhase.PLAN_REJECTED, ProjectPhase.GATE_2_REJECTED} else 0
 
-    print("\n下一步（本地 preview，Gate 2）:")
-    print(f"   cd {target}")
-    if not verify:
-        print("   npm install")
-    print("   npm run dev   # 然后浏览器打开 http://localhost:3000")
-    return 0
 
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     raise SystemExit(main())

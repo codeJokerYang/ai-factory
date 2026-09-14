@@ -18,6 +18,7 @@ class Reviewer(Agent):
     model = REVIEWER_MODEL
 
     def run(self, state: ProjectState) -> ProjectState:
+        state.code_review = None
         if state.phase == ProjectPhase.FAILED:
             return state
         if not state.generated_files:
@@ -27,7 +28,7 @@ class Reviewer(Agent):
         spec_json = state.product_spec.model_dump_json(indent=2) if state.product_spec else "{}"
         arch_json = state.architecture.model_dump_json(indent=2) if state.architecture else "{}"
         files = [{"path": f.path, "content": f.content} for f in state.generated_files]
-        raw = self.llm.complete(
+        raw = self.complete(state,
             model=self.model, system=SYSTEM, prompt=build_prompt(spec_json, arch_json, files)
         )
         try:

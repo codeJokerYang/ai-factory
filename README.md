@@ -1,3 +1,69 @@
+# AI Factory 网页工作台
+
+本地输入需求 → 方案审批 → 生成与修复 → 构建、审查、指令核对 → 人工预览验收。
+
+## 启动网页
+
+```powershell
+# 首次安装（Python 3.10+；构建生成应用还需要 Node.js/npm）
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+# 在本地 .env 或环境变量中配置 ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN。
+# 兼容网关可配置 ANTHROPIC_BASE_URL；用 FACTORY_MODEL 指定可用模型。
+.\.venv\Scripts\python.exe -m orchestration.web
+```
+
+打开 http://127.0.0.1:8765 。服务仅绑定本机，不用于公网托管。
+
+### 使用本地 DeepSeek 凭据
+
+已有 `DEEPSEEK_API_KEY` 环境变量且未配置 Anthropic 凭据时，工作台自动选择 DeepSeek，默认模型 `deepseek-chat`，无需把密钥复制到项目文件。存在多家凭据时，在启动前设置 `$env:FACTORY_PROVIDER = "deepseek"`。可以用 `DEEPSEEK_MODEL` 或 `FACTORY_MODEL` 覆盖模型。
+
+DeepSeek 模式只把该密钥发到官方 Anthropic 兼容接口 `https://api.deepseek.com/anthropic`，不会沿用环境中其他 `ANTHROPIC_BASE_URL` 网关。参见 [DeepSeek 官方接口说明](https://api-docs.deepseek.com/guides/anthropic_api/)。
+
+
+1. 在需求框描述产品，约束框每行填写一条必须满足的要求。
+2. 点击“开始执行”，检查方案后批准或拒绝。
+3. 系统执行生成、审查修订、安全扫描、构建修复、最终复审和指令核对。
+4. 全部检查通过后，在等待验收期间打开预览，确认后批准或拒绝。
+5. 网页可以查看和下载运行报告；本地完整报告保存在 `.factory/runs/<id>/report.json`。
+
+原始需求会传给每个 Agent，包括编译修复和审查修订。逐项要求使用 R1、R2 等稳定编号，代码证据无法验证、要求缺失或不确定时不允许验收。核对是模型辅助的代码检查，不代表业务测试通过。
+
+同一服务一次运行一个任务。审批最长等待 30 分钟；拒绝会结束本次运行，修改需求后重新提交。刷新页面可继续查看当前任务；服务重启后不自动恢复运行，可在本地读取报告。每次生成使用独立目录，避免覆盖其他项目。
+
+## 命令行
+
+```powershell
+.\.venv\Scripts\python.exe -m orchestration.build_cli "中文任务管理工具" --require "刷新后保留任务" --gate2
+.\.venv\Scripts\python.exe -m orchestration.build_cli --instructions-file wiki/specs/my-request.md --gate2
+# 仅生成（不会执行 npm，不会标记验收通过）
+.\.venv\Scripts\python.exe -m orchestration.build_cli "我的需求" --generate-only
+```
+
+默认必须人工批准方案。只有显式 `--approve-plan` 才自动批准；`--verify` 保留兼容，构建验证已默认开启。
+
+## 当前边界
+
+新增：失败/中断任务检查点恢复、真实浏览器业务场景、调用/token/金额预算与费用估算面板。交付验证及人工验收通过后可下载带指纹的本地交付包，尚不自动上线。用法见 [恢复与交付规格](wiki/specs/recovery-business-delivery.md)。
+
+已有任务可在“本地任务”弹窗内继续修改、查看版本与差异。修改基于归档源码，以原文件哈希校验增量变化；失败候选不替换已验收版本。恢复版本只切换项目引用，不部署。详见 [项目版本规格](wiki/specs/project-versions.md)。
+
+- 固定 Next.js 技术栈；首次整项目生成，已有项目支持文件级增量修改，尚未实现按 DAG 增量执行。
+- npm 安装禁用生命周期脚本，生成文件不能覆盖 package.json、构建配置或隐藏文件；安全扫描在执行前运行。但生成代码仍在本机运行，尚无容器沙箱。
+- 不自动创建远程 PR、合并或部署。业务 E2E 覆盖用户配置的本地场景；生产运维、执行沙箱及跨系统测试仍待实现。
+- 模型 API 及网关可用性需自行配置验证；网页不会收集或写入密钥。
+
+## 验证
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
+```
+
+下方为原始工作流设计参考；实际自动化能力和入口以上述说明为准。
+
+---
+
 # 一人公司 × AI 编程助手 工作流
 
 > **核心理念**: 你不是在写代码，你是在**指挥一个免费工程团队**。

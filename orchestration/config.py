@@ -73,8 +73,33 @@ BASE_URL_ENV = "ANTHROPIC_BASE_URL"
 
 
 def get_api_key() -> str | None:
+    if get_provider() == "deepseek":
+        return os.environ.get("DEEPSEEK_API_KEY")
     return os.environ.get(API_KEY_ENV) or os.environ.get(AUTH_TOKEN_ENV)
 
 
 def get_base_url() -> str | None:
+    if get_provider() == "deepseek":
+        # Never send the DeepSeek key to an unrelated ambient Anthropic gateway.
+        return "https://api.deepseek.com/anthropic"
     return os.environ.get(BASE_URL_ENV)
+
+
+def get_provider() -> str:
+    selected = os.environ.get("FACTORY_PROVIDER", "").strip().lower()
+    if selected:
+        if selected not in {"anthropic", "deepseek"}:
+            raise ValueError("FACTORY_PROVIDER 必须是 anthropic 或 deepseek")
+        return selected
+    if not (os.environ.get(API_KEY_ENV) or os.environ.get(AUTH_TOKEN_ENV)) and os.environ.get("DEEPSEEK_API_KEY"):
+        return "deepseek"
+    return "anthropic"
+
+
+def get_model(role: str, default: str) -> str:
+    override = os.environ.get("FACTORY_MODEL") or os.environ.get(f"FACTORY_{role.upper()}_MODEL")
+    if override:
+        return override
+    if get_provider() == "deepseek":
+        return os.environ.get("DEEPSEEK_MODEL") or "deepseek-chat"
+    return default
